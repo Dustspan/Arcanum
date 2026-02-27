@@ -49,14 +49,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .msg-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.4;position:relative}
 .msg-bubble.in{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px}
 .msg-bubble.out{background:linear-gradient(135deg,var(--accent),#a855f7);color:#000;border-bottom-right-radius:4px}
-.msg-bubble.sending{opacity:.6}
-.msg-bubble.failed{border:1px solid var(--error)}
 .msg-nick{font-size:11px;color:var(--accent);margin-bottom:4px;font-weight:500}
 .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right;opacity:.7}
-.msg-status{font-size:9px;margin-left:4px}
-.msg-status.sending{color:var(--muted)}
-.msg-status.sent{color:var(--success)}
-.msg-status.failed{color:var(--error)}
 .msg-img{max-width:200px;border-radius:10px;cursor:pointer;transition:transform .2s}
 .msg-img:hover{transform:scale(1.02)}
 .msg-file{display:flex;align-items:center;gap:10px;padding:10px;background:rgba(0,0,0,.1);border-radius:8px;cursor:pointer;transition:background .2s}
@@ -73,7 +67,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .chat-input-wrap{background:var(--bg);border-top:1px solid var(--border);padding:12px}
 .chat-input{display:flex;gap:10px;align-items:flex-end}
 .chat-input textarea{flex:1;padding:10px 14px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:20px;font-size:14px;outline:none;resize:none;max-height:100px;line-height:1.4}
-.chat-tools{display:flex;gap:6px}
+.chat-tools{display:flex;gap:6px;position:relative}
 .tool-btn{width:36px;height:36px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:16px;transition:all .2s}
 .tool-btn:hover{border-color:var(--accent);color:var(--accent);transform:scale(1.1)}
 .admin-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
@@ -186,8 +180,7 @@ Vue.createApp({
       showEmoji: false,
       emojis: ['😀','😂','🤣','😊','😍','🥰','😘','😜','🤔','😎','👍','👎','❤️','🔥','🎉','👏','🙏','💪','🤝','👋','😢','😭','😤','🤬','😱','🥳','😴','🤮','🤢','😷','🤒','🤕'],
       typingUsers: [],
-      ws: null,
-      msgIdCounter: 0
+      ws: null
     };
   },
   computed: {
@@ -305,7 +298,7 @@ Vue.createApp({
       if (!this.currentGroup) return;
       const d = await this.api('/api/messages/group/' + this.currentGroup.id);
       if (d.success) {
-        this.messages = d.data.map(m => ({...m, _status: 'sent'}));
+        this.messages = d.data || [];
         this.$nextTick(() => this.scrollToBottom());
       }
     },
@@ -313,29 +306,22 @@ Vue.createApp({
       const box = this.$refs.msgsBox;
       if (box) box.scrollTop = box.scrollHeight;
     },
-    // 乐观更新：发送消息时立即显示
+    // 检查消息是否已存在
+    messageExists(id) {
+      return this.messages.some(m => m.id === id);
+    },
+    // 添加消息（如果不存在）
+    addMessageIfNotExists(msg) {
+      if (!this.messageExists(msg.id)) {
+        this.messages.push(msg);
+        this.$nextTick(() => this.scrollToBottom());
+      }
+    },
+    // 发送消息
     async doSendMsg() {
       if (!this.msgInput.trim() || !this.currentGroup) return;
       const content = this.msgInput;
       this.msgInput = '';
-      
-      // 生成临时ID
-      const tempId = 'temp_' + (++this.msgIdCounter);
-      const now = new Date().toISOString();
-      
-      // 立即添加到消息列表（乐观更新）
-      const tempMsg = {
-        id: tempId,
-        senderId: this.user.id,
-        senderNickname: this.user.nickname,
-        senderAvatar: this.user.avatar,
-        content: content,
-        msgType: 'text',
-        createdAt: now,
-        _status: 'sending'
-      };
-      this.messages.push(tempMsg);
-      this.$nextTick(() => this.scrollToBottom());
       
       // 发送到服务器
       const d = await this.api('/api/messages', {
@@ -346,43 +332,12 @@ Vue.createApp({
         })
       });
       
-      // 更新消息状态
-      const idx = this.messages.findIndex(m => m.id === tempId);
-      if (idx >= 0) {
-        if (d.success) {
-          // 用服务器返回的消息替换临时消息
-          this.messages.splice(idx, 1);
-          // WebSocket会收到消息，不需要手动添加
-        } else {
-          // 标记为失败
-          this.messages[idx]._status = 'failed';
-          alert('发送失败: ' + (d.error || '未知错误'));
-        }
-      }
-    },
-    // 重试发送失败的消息
-    async retryMessage(msg) {
-      if (msg._status !== 'failed') return;
-      
-      const idx = this.messages.findIndex(m => m.id === msg.id);
-      if (idx >= 0) {
-        this.messages[idx]._status = 'sending';
-      }
-      
-      const d = await this.api('/api/messages', {
-        method: 'POST',
-        body: JSON.stringify({ 
-          group_id: this.currentGroup.id, 
-          content: msg.content 
-        })
-      });
-      
-      if (d.success) {
-        this.messages.splice(idx, 1);
+      if (d.success && d.data) {
+        // 直接用API返回的消息添加到列表
+        this.addMessageIfNotExists(d.data);
       } else {
-        if (idx >= 0) {
-          this.messages[idx]._status = 'failed';
-        }
+        // 恢复输入内容
+        this.msgInput = content;
         alert('发送失败: ' + (d.error || '未知错误'));
       }
     },
@@ -420,24 +375,6 @@ Vue.createApp({
       this.showUploadProgress = true;
       this.uploadProgress = 0;
       
-      // 乐观更新：立即显示上传中的消息
-      const tempId = 'temp_' + (++this.msgIdCounter);
-      const now = new Date().toISOString();
-      const tempMsg = {
-        id: tempId,
-        senderId: this.user.id,
-        senderNickname: this.user.nickname,
-        senderAvatar: this.user.avatar,
-        content: '',
-        msgType: isImage ? 'image' : 'file',
-        fileName: file.name,
-        fileSize: file.size,
-        createdAt: now,
-        _status: 'sending'
-      };
-      this.messages.push(tempMsg);
-      this.$nextTick(() => this.scrollToBottom());
-      
       try {
         let uploadFile = file;
         
@@ -448,8 +385,6 @@ Vue.createApp({
         
         if (uploadFile.size > maxSize) {
           alert('文件太大，请选择小于5MB的文件');
-          const idx = this.messages.findIndex(m => m.id === tempId);
-          if (idx >= 0) this.messages.splice(idx, 1);
           this.showUploadProgress = false;
           e.target.value = '';
           return;
@@ -470,21 +405,16 @@ Vue.createApp({
         const text = await r.text();
         const d = JSON.parse(text);
         
-        // 移除临时消息，WebSocket会收到真实消息
-        const idx = this.messages.findIndex(m => m.id === tempId);
-        if (idx >= 0) this.messages.splice(idx, 1);
-        
-        if (!d.success) {
+        if (d.success && d.data) {
+          // 直接用API返回的消息添加到列表
+          this.addMessageIfNotExists(d.data);
+        } else {
           alert('上传失败: ' + (d.error || '未知错误'));
         }
         
         this.uploadProgress = 100;
         
       } catch (e) {
-        const idx = this.messages.findIndex(m => m.id === tempId);
-        if (idx >= 0) {
-          this.messages[idx]._status = 'failed';
-        }
         alert('上传失败: ' + e.message);
       }
       
@@ -538,48 +468,59 @@ Vue.createApp({
       this.ws = new WebSocket(proto + '//' + location.host + '/ws?token=' + this.token);
       
       this.ws.onmessage = (e) => {
-        const m = JSON.parse(e.data);
-        
-        if (m.event === 'message' && m.data.groupId === this.currentGroup?.id) {
-          // 检查是否已存在（避免重复）
-          const exists = this.messages.some(msg => msg.id === m.data.id);
-          if (!exists) {
-            this.messages.push({...m.data, _status: 'sent'});
-            this.$nextTick(() => this.scrollToBottom());
-          }
-        }
-        
-        if (m.event === 'direct_message') {
-          if (this.dmTarget && (m.data.senderId === this.dmTarget.id || m.data.receiverId === this.dmTarget.id)) {
-            this.dmMessages.push(m.data);
-          }
-        }
-        
-        if (m.event === 'message_recall' && m.data.groupId === this.currentGroup?.id) {
-          const idx = this.messages.findIndex(msg => msg.id === m.data.id);
-          if (idx >= 0) this.messages.splice(idx, 1);
-        }
-        
-        if (m.event === 'typing' && m.data.groupId === this.currentGroup?.id) {
-          const nickname = m.data.nickname;
-          if (m.data.isTyping) {
-            if (!this.typingUsers.includes(nickname)) {
-              this.typingUsers.push(nickname);
+        try {
+          const m = JSON.parse(e.data);
+          
+          // 处理消息
+          if (m.event === 'message' && m.data) {
+            // 如果在当前频道，添加消息
+            if (m.data.groupId === this.currentGroup?.id) {
+              this.addMessageIfNotExists(m.data);
             }
-          } else {
-            const idx = this.typingUsers.indexOf(nickname);
-            if (idx >= 0) this.typingUsers.splice(idx, 1);
           }
-        }
-        
-        if (m.event === 'friend_request') {
-          this.loadFriendRequests();
+          
+          // 处理私聊
+          if (m.event === 'direct_message' && m.data) {
+            if (this.dmTarget && (m.data.senderId === this.dmTarget.id || m.data.receiverId === this.dmTarget.id)) {
+              this.dmMessages.push(m.data);
+            }
+          }
+          
+          // 处理消息撤回
+          if (m.event === 'message_recall' && m.data) {
+            if (m.data.groupId === this.currentGroup?.id) {
+              const idx = this.messages.findIndex(msg => msg.id === m.data.id);
+              if (idx >= 0) this.messages.splice(idx, 1);
+            }
+          }
+          
+          // 处理输入状态
+          if (m.event === 'typing' && m.data) {
+            if (m.data.groupId === this.currentGroup?.id && m.data.userId !== this.user.id) {
+              const nickname = m.data.nickname;
+              if (m.data.isTyping) {
+                if (!this.typingUsers.includes(nickname)) {
+                  this.typingUsers.push(nickname);
+                }
+              } else {
+                const idx = this.typingUsers.indexOf(nickname);
+                if (idx >= 0) this.typingUsers.splice(idx, 1);
+              }
+            }
+          }
+          
+          // 处理好友请求
+          if (m.event === 'friend_request') {
+            this.loadFriendRequests();
+          }
+        } catch (err) {
+          console.error('WebSocket消息解析错误:', err);
         }
       };
       
       this.ws.onclose = () => setTimeout(() => this.connectWS(), 3000);
+      this.ws.onerror = (err) => console.error('WebSocket错误:', err);
     },
-    // 发送正在输入状态
     sendTypingStatus(isTyping) {
       if (this.ws && this.ws.readyState === WebSocket.OPEN && this.currentGroup) {
         this.ws.send(JSON.stringify({
@@ -635,13 +576,13 @@ Vue.createApp({
     },
     async loadFriends() {
       const d = await this.api('/api/friends');
-      if (d.success) this.friends = d.data;
+      if (d.success) this.friends = d.data || [];
     },
     async loadFriendRequests() {
       const d = await this.api('/api/friends/requests');
       if (d.success) {
-        this.friendRequests = d.data;
-        this.friendRequestCount = d.data.length;
+        this.friendRequests = d.data || [];
+        this.friendRequestCount = this.friendRequests.length;
       }
     },
     async acceptFriend(userId) {
@@ -670,11 +611,11 @@ Vue.createApp({
     },
     async loadAllPermissions() {
       const d = await this.api('/api/admin/permissions');
-      if (d.success) this.allPermissions = d.data;
+      if (d.success) this.allPermissions = d.data || [];
     },
     async loadUsers() {
       const d = await this.api('/api/admin/users');
-      if (d.success) this.users = d.data;
+      if (d.success) this.users = d.data || [];
     },
     async doCreateUser() {
       if (!this.newUser.nickname || !this.newUser.password) {
@@ -722,7 +663,7 @@ Vue.createApp({
     },
     async loadAllGroups() {
       const d = await this.api('/api/admin/groups');
-      if (d.success) this.allGroups = d.data;
+      if (d.success) this.allGroups = d.data || [];
     },
     async doCreateGroup() {
       if (!this.newGroup.name.trim()) {
@@ -753,7 +694,7 @@ Vue.createApp({
     },
     async loadWords() {
       const d = await this.api('/api/admin/sensitive-words');
-      if (d.success) this.words = d.data;
+      if (d.success) this.words = d.data || [];
     },
     async doAddWord() {
       if (!this.newWord.word) { alert('请输入敏感词'); return; }
@@ -771,7 +712,7 @@ Vue.createApp({
     },
     async loadStats() {
       const d = await this.api('/api/admin/statistics');
-      if (d.success) this.stats = d.data;
+      if (d.success) this.stats = d.data || {};
     },
     openPermModal(u) {
       this.permTarget = u;
@@ -841,7 +782,6 @@ Vue.createApp({
       }
     }
   },
-  // 监听输入变化，发送正在输入状态
   watch: {
     msgInput(newVal, oldVal) {
       if (this.currentGroup && newVal !== oldVal) {
@@ -967,14 +907,10 @@ Vue.createApp({
         <div class="msg-row" v-for="m in messages" :key="m.id" :class="{me: m.senderId === user.id}">
           <div class="msg-avatar" @click.stop="openUserMenu($event, m.senderId, m.senderNickname)">{{m.senderNickname ? m.senderNickname.charAt(0) : '?'}}</div>
           <div class="msg-content">
-            <div class="msg-bubble" :class="[m.senderId === user.id ? 'out' : 'in', m._status]">
+            <div class="msg-bubble" :class="m.senderId === user.id ? 'out' : 'in'">
               <div class="msg-nick" v-if="m.senderId !== user.id">{{m.senderNickname}}</div>
               <div v-html="renderMsg(m)"></div>
-              <div class="msg-time">
-                {{formatTime(m.createdAt)}}
-                <span v-if="m._status === 'sending'" class="msg-status sending">发送中</span>
-                <span v-else-if="m._status === 'failed'" class="msg-status failed" @click="retryMessage(m)">失败(重试)</span>
-              </div>
+              <div class="msg-time">{{formatTime(m.createdAt)}}</div>
             </div>
             <div class="msg-actions" v-if="m.senderId === user.id">
               <button class="msg-action danger" @click="recallMessage(m.id)">撤回</button>
@@ -983,7 +919,7 @@ Vue.createApp({
         </div>
       </div>
       <div class="chat-input-wrap">
-        <div class="chat-input" style="position:relative">
+        <div class="chat-input">
           <div class="chat-tools">
             <label class="tool-btn" v-if="canUpload" title="发送图片">📷<input type="file" accept="image/*" @change="uploadFile" style="display:none"></label>
             <label class="tool-btn" v-if="canUpload" title="发送文件">📎<input type="file" accept=".txt,.pdf,.doc,.docx" @change="uploadFile" style="display:none"></label>
