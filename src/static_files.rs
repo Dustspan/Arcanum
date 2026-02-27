@@ -80,6 +80,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .member-status{font-size:11px;margin-top:2px}
 .member-status.online{color:var(--success)}
 .member-status.offline{color:var(--muted)}
+.pinned-badge{font-size:10px;background:var(--warn);color:#000;padding:2px 6px;border-radius:4px;margin-left:8px}
+.msg-row.pinned{background:rgba(255,170,0,.05)}
+.msg-row.pinned .msg-bubble{border-color:var(--warn)}
+.pin-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:10px;opacity:.5;margin-left:4px}
+.pin-btn:hover{opacity:1;color:var(--warn)}
 .typing-indicator{padding:4px 12px;font-size:11px;color:var(--muted);font-style:italic}
 .group-announcement{padding:8px 12px;background:rgba(0,255,255,.1);border-bottom:1px solid var(--border);font-size:12px;color:var(--accent);cursor:pointer}
 .group-announcement:hover{background:rgba(0,255,255,.15)}
@@ -545,9 +550,31 @@ let replyHtml="";
 if(m.replyTo&&m.replyInfo){
 replyHtml='<div class="msg-reply" onclick="scrollToMsg(\''+m.replyTo+'\')"><span class="msg-reply-nick">'+esc(m.replyInfo.senderNickname)+'</span><span class="msg-reply-content">'+esc(m.replyInfo.content.substring(0,50))+(m.replyInfo.content.length>50?"...":"")+'</span></div>';
 }
+// 置顶标记
+const pinnedHtml=m.pinned?'<span class="pinned-badge">📌 置顶</span>':"";
+// 置顶按钮（管理员或频道所有者）
+const canPin=user.role==="admin"||(user.id===m.groupOwnerId);
+const pinBtn=canPin?'<button class="pin-btn" onclick="togglePin(\''+m.id+'\')">'+(m.pinned?"取消置顶":"置顶")+'</button>':"";
 // 添加双击撤回功能（仅限自己发送的消息）
 const recallAttr=isMe?' ondblclick="recallMessage(\''+m.id+'\')" title="双击撤回"':"";
-return'<div class="msg-row'+(isMe?" me":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"'+recallAttr+'><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+replyHtml+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'<button class="reply-btn" onclick="setReply(\''+m.id+'\',\''+esc(m.senderNickname)+'\',\''+esc(m.content.substring(0,30))+'\')">↩</button></div></div></div>';
+return'<div class="msg-row'+(isMe?" me":"")+(m.pinned?" pinned":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"'+recallAttr+'><div class="msg-nick">'+esc(m.senderNickname)+pinnedHtml+'</div>'+replyHtml+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'<button class="reply-btn" onclick="setReply(\''+m.id+'\',\''+esc(m.senderNickname)+'\',\''+esc(m.content.substring(0,30))+'\')">↩</button>'+pinBtn+'</div></div></div>';
+}
+
+async function togglePin(msgId){
+try{
+const d=await api("/api/messages/"+msgId+"/pin",{method:"POST"});
+if(d.success){
+// 更新UI
+const msgEl=document.querySelector('[data-mid="'+msgId+'"]');
+if(msgEl){
+if(d.data.pinned){
+msgEl.classList.add("pinned");
+}else{
+msgEl.classList.remove("pinned");
+}
+}
+}else{alert(d.error||"操作失败")}
+}catch(e){alert("操作失败")}
 }
 
 let replyTo=null;

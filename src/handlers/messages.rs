@@ -120,15 +120,15 @@ pub async fn get_messages(
     
     let limit = pagination.limit.unwrap_or(50).min(100);
     
-    let messages: Vec<(String, String, String, String, String, Option<String>, i64, i64, Option<String>, String, Option<String>)> = 
+    let messages: Vec<(String, String, String, String, String, Option<String>, i64, i64, Option<String>, i64, String, Option<String>)> = 
         if let Some(before) = &pagination.before {
             // 分页查询：加载指定时间之前的消息
             sqlx::query_as(r#"
-                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.reply_to, m.created_at, u.avatar
+                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.reply_to, m.pinned, m.created_at, u.avatar
                 FROM messages m 
                 JOIN users u ON m.sender_id = u.id 
                 WHERE m.group_id = ? AND m.created_at < ?
-                ORDER BY m.created_at DESC
+                ORDER BY m.pinned DESC, m.created_at DESC
                 LIMIT ?
             "#)
                 .bind(&group_id).bind(before).bind(limit)
@@ -136,11 +136,11 @@ pub async fn get_messages(
         } else {
             // 初始加载：获取最新的消息
             sqlx::query_as(r#"
-                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.reply_to, m.created_at, u.avatar
+                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.reply_to, m.pinned, m.created_at, u.avatar
                 FROM messages m 
                 JOIN users u ON m.sender_id = u.id 
                 WHERE m.group_id = ? 
-                ORDER BY m.created_at DESC
+                ORDER BY m.pinned DESC, m.created_at DESC
                 LIMIT ?
             "#)
                 .bind(&group_id).bind(limit)
@@ -193,7 +193,7 @@ pub async fn get_messages(
                 "id": m.0,
                 "senderId": m.1,
                 "senderNickname": m.2,
-                "senderAvatar": m.10,
+                "senderAvatar": m.11,
                 "content": m.3,
                 "msgType": m.4,
                 "fileName": m.5,
@@ -201,14 +201,15 @@ pub async fn get_messages(
                 "burnAfter": m.7,
                 "replyTo": m.8,
                 "replyInfo": reply_info,
-                "createdAt": m.9
+                "pinned": m.9 == 1,
+                "createdAt": m.10
             })
         }).collect::<Vec<_>>(),
         "pagination": {
             "total": total,
             "hasMore": has_more,
-            "oldestCreatedAt": messages.first().map(|m| m.9.clone()),
-            "newestCreatedAt": messages.last().map(|m| m.9.clone())
+            "oldestCreatedAt": messages.first().map(|m| m.10.clone()),
+            "newestCreatedAt": messages.last().map(|m| m.10.clone())
         }
     })))
 }
@@ -559,5 +560,59 @@ pub async fn search_messages(
         })).collect::<Vec<_>>(),
         "keyword": keyword,
         "count": messages.len()
+    })))
+}
+
+/// 置顶/取消置顶消息
+pub async fn toggle_pin_message(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Path(id): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    // 获取消息信息
+    let msg: Option<(String, i64)> = sqlx::query_as("SELECT group_id, pinned FROM messages WHERE id = ?")
+        .bind(&id)
+        .fetch_optional(&state.db)
+        .await?;
+    
+    let msg = msg.ok_or(crate::error::AppError::NotFound)?;
+    
+    // 检查权限：管理员或频道所有者
+    let owner: Option<String> = sqlx::query_scalar("SELECT owner_id FROM groups WHERE id = ?")
+        .bind(&msg.0)
+        .fetch_optional(&state.db)
+        .await?;
+    
+    let owner = owner.ok_or(crate::error::AppError::NotFound)?;
+    
+    if claims.role != "admin" && owner != claims.sub {
+        return Err(crate::error::AppError::Forbidden);
+    }
+    
+    // 切换置顶状态
+    let new_pinned = if msg.1 == 0 { 1 } else { 0 };
+    sqlx::query("UPDATE messages SET pinned = ? WHERE id = ?")
+        .bind(new_pinned).bind(&id)
+        .execute(&state.db)
+        .await?;
+    
+    // 广播置顶状态变更
+    let _ = state.broadcast.broadcast_to_group(&msg.0, WsMessage {
+        event: "message_pin".into(),
+        data: json!({
+            "id": id,
+            "groupId": msg.0,
+            "pinned": new_pinned == 1
+        })
+    });
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "id": id,
+            "pinned": new_pinned == 1
+        }
     })))
 }
