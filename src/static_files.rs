@@ -67,12 +67,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .chat-input textarea:focus{border-color:var(--accent)}
 .chat-actions{display:flex;gap:4px}
 .chat-action-btn{width:36px;height:36px;background:var(--card);border:1px solid var(--border);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s}
-.chat-action-btn:hover{border-color:var(--accent);color:var(--accent")}
+.chat-action-btn:hover{border-color:var(--accent);color:var(--accent)}
 .send-btn{width:40px;height:40px;background:var(--accent);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .send-btn svg{width:18px;height:18px;fill:#000}
 .admin-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
 .admin-tab{flex:1;min-width:60px;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:12px;cursor:pointer;text-align:center}
-.admin-tab.on{border-color:var(--accent);color:var(--accent")}
+.admin-tab.on{border-color:var(--accent);color:var(--accent)}
 .admin-section{display:none}
 .admin-section.on{display:block}
 .admin-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
@@ -80,12 +80,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .item-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin:8px 0}
 .item-card .item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .item-card .item-title{font-size:14px;font-weight:500}
-.item-card .item-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--border);color:var(--muted")}
-.item-card .item-badge.admin{background:rgba(255,170,0,.2);color:var(--warn")}
-.item-card .item-badge.banned{background:rgba(255,68,102,.2);color:var(--error")}
-.item-card .item-badge.active{background:rgba(0,255,136,.2);color:var(--success")}
-.item-card .item-badge.online{background:rgba(0,255,255,.2);color:var(--accent")}
-.item-card .item-badge.muted{background:rgba(255,170,0,.2);color:var(--warn")}
+.item-card .item-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--border);color:var(--muted)}
+.item-card .item-badge.admin{background:rgba(255,170,0,.2);color:var(--warn)}
+.item-card .item-badge.banned{background:rgba(255,68,102,.2);color:var(--error)}
+.item-card .item-badge.active{background:rgba(0,255,136,.2);color:var(--success)}
+.item-card .item-badge.online{background:rgba(0,255,255,.2);color:var(--accent)}
+.item-card .item-badge.muted{background:rgba(255,170,0,.2);color:var(--warn)}
 .item-card .item-info{font-size:11px;color:var(--muted);margin-bottom:8px}
 .item-card .item-actions{display:flex;gap:4px;flex-wrap:wrap}
 .item-card .item-actions button{flex:1;min-width:50px}
@@ -95,15 +95,15 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .user-menu-avatar{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#000;overflow:hidden;flex-shrink:0}
 .user-menu-avatar img{width:100%;height:100%;object-fit:cover}
 .user-menu-info h4{font-size:14px;font-weight:500}
-.user-menu-info p{font-size:11px;color:var(--muted")}
+.user-menu-info p{font-size:11px;color:var(--muted)}
 .user-menu-status{font-size:11px;margin-top:2px}
-.user-menu-status.online{color:var(--success")}
-.user-menu-status.offline{color:var(--muted")}
-.user-menu-status.muted{color:var(--warn")}
+.user-menu-status.online{color:var(--success)}
+.user-menu-status.offline{color:var(--muted)}
+.user-menu-status.muted{color:var(--warn)}
 .user-menu-item{display:block;width:100%;padding:8px 12px;background:transparent;border:none;color:var(--text);font-size:13px;text-align:left;cursor:pointer;border-radius:6px}
-.user-menu-item:hover{background:var(--border")}
-.user-menu-item.danger{color:var(--error")}
-.user-menu-item.warn{color:var(--warn")}
+.user-menu-item:hover{background:var(--border)}
+.user-menu-item.danger{color:var(--error)}
+.user-menu-item.warn{color:var(--warn)}
 .permission-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .permission-tag{font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(0,255,255,.1);color:var(--accent);border:1px solid rgba(0,255,255,.2)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:2000}
@@ -114,11 +114,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .permission-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:300px;overflow-y:auto}
 .permission-item{padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
 .permission-item label{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer}
-.permission-item input{accent-color:var(--accent")}
+.permission-item input{accent-color:var(--accent)}
 .mute-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .mute-option{padding:6px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer}
-.mute-option:hover{border-color:var(--accent")}
-.mute-option.on{border-color:var(--accent);color:var(--accent")}
+.mute-option:hover{border-color:var(--accent)}
+.mute-option.on{border-color:var(--accent);color:var(--accent)}
 .upload-progress{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--accent);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--accent);z-index:1000}
 .loading-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--accent);border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin-right:8px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -268,7 +268,7 @@ let selectedMuteDuration=30;
 let allPermissions=[];
 let userPermissions={};
 let onlineUsers=new Set();
-let displayedMsgIds=new Set(); // 消息去重
+let displayedMsgIds=new Set();
 const API=location.origin;
 
 let wsReconnectAttempts=0;
@@ -292,40 +292,24 @@ const uid=$("loginUid").value.trim().toUpperCase();
 const pwd=$("loginPwd").value;
 const errEl=$("loginErr");
 const btn=$("loginBtn");
-
 if(!uid){errEl.textContent="请输入UID";return}
 if(!pwd){errEl.textContent="请输入密码";return}
-
 btn.disabled=true;
 btn.textContent="登录中...";
 errEl.textContent="";
-
 try{
 const r=await fetch(API+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({uid,password:pwd})});
 const d=await r.json();
-if(d.success){
-token=d.data.token;
-user=d.data.user;
-localStorage.setItem("t",token);
-localStorage.setItem("u",JSON.stringify(user));
-showMain();
-}else{
-errEl.textContent=d.error||"登录失败";
-}
-}catch(e){
-errEl.textContent="网络错误: "+e.message;
-}finally{
-btn.disabled=false;
-btn.textContent="进入";
-}
+if(d.success){token=d.data.token;user=d.data.user;localStorage.setItem("t",token);localStorage.setItem("u",JSON.stringify(user));showMain()}
+else errEl.textContent=d.error||"登录失败";
+}catch(e){errEl.textContent="网络错误: "+e.message}
+finally{btn.disabled=false;btn.textContent="进入"}
 }
 
 function showMain(){
 $("loginPage").classList.add("hidden");
 $("mainPage").classList.remove("hidden");
-if(user.role==="admin"||(user.permissions&&user.permissions.length>0)){
-$("adminEntry").classList.remove("hidden");
-}
+if(user.role==="admin"||(user.permissions&&user.permissions.length>0))$("adminEntry").classList.remove("hidden");
 connectWebSocket();
 loadMyChannels();
 }
@@ -334,7 +318,7 @@ async function loadMyChannels(){
 try{
 const d=await api("/api/groups");
 const el=$("myChannels");
-if(d.success){el.innerHTML=d.data.length?d.data.map(g=>'<div class="channel-card" data-gid="'+g.id+'"><h3>'+esc(g.name)+'</h3><p>点击进入</p></div>').join(""):'<div class="empty">暂无频道，输入频道名进入</div>'}
+if(d.success)el.innerHTML=d.data.length?d.data.map(g=>'<div class="channel-card" data-gid="'+g.id+'"><h3>'+esc(g.name)+'</h3><p>点击进入</p></div>').join(""):'<div class="empty">暂无频道，输入频道名进入</div>';
 }catch(e){}
 }
 
@@ -347,7 +331,7 @@ if(!name){$("cipherErr").textContent="请输入频道名";return}
 try{
 const d=await api("/api/groups/enter",{method:"POST",body:JSON.stringify({name})});
 if(d.success){groupId=d.data.id;$("cipherErr").textContent="";$("cipherInput").value="";showChat()}
-else{$("cipherErr").textContent=d.error||"频道不存在"}
+else $("cipherErr").textContent=d.error||"频道不存在";
 }catch(e){$("cipherErr").textContent="网络错误"}
 }
 
@@ -366,10 +350,8 @@ el.scrollTop=el.scrollHeight;
 }
 
 function addMessage(m,scroll=true){
-// 去重检查
 if(displayedMsgIds.has(m.id))return;
 displayedMsgIds.add(m.id);
-
 const el=$("msgs");
 el.innerHTML+=renderMessage(m);
 if(scroll)el.scrollTop=el.scrollHeight;
@@ -381,16 +363,9 @@ const isOnline=onlineUsers.has(m.senderId);
 const avatarHtml=m.senderAvatar?'<img src="'+m.senderAvatar+'" alt="">':m.senderNickname.charAt(0).toUpperCase();
 const onlineDot='<span class="online-dot '+(isOnline?"on":"off")+'"></span>';
 let contentHtml="";
-if(m.msgType==="image"){
-contentHtml='<img class="msg-image" src="'+m.content+'" onclick="window.open(\''+m.content+'\',\'_blank\')" loading="lazy">';
-}
-else if(m.msgType==="file"){
-const size=formatFileSize(m.fileSize);
-contentHtml='<div class="msg-file"><div class="msg-file-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div class="msg-file-info"><div class="msg-file-name">'+esc(m.fileName||"文件")+'</div><div class="msg-file-size">'+size+'</div></div></div>';
-}
-else{
-contentHtml=esc(m.content);
-}
+if(m.msgType==="image")contentHtml='<img class="msg-image" src="'+m.content+'" onclick="window.open(\''+m.content+'\',\'_blank\')" loading="lazy">';
+else if(m.msgType==="file"){const size=formatFileSize(m.fileSize);contentHtml='<div class="msg-file"><div class="msg-file-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div class="msg-file-info"><div class="msg-file-name">'+esc(m.fileName||"文件")+'</div><div class="msg-file-size">'+size+'</div></div></div>';}
+else contentHtml=esc(m.content);
 return'<div class="msg-row'+(isMe?" me":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'</div></div></div>';
 }
 
@@ -415,10 +390,8 @@ formData.append("file",file);
 try{
 const r=await fetch(API+"/api/messages/file/"+groupId,{method:"POST",headers:{"Authorization":"Bearer "+token},body:formData});
 const d=await r.json();
-if(d.success){
-// 后端已广播消息，直接显示（乐观更新）
-addMessage(d.data);
-}else{alert(d.error||"上传失败")}
+if(d.success)addMessage(d.data);
+else alert(d.error||"上传失败");
 }catch(err){alert("上传失败")}
 finally{hideUploadProgress()}
 e.target.value="";
@@ -433,10 +406,8 @@ formData.append("file",file);
 try{
 const r=await fetch(API+"/api/messages/file/"+groupId,{method:"POST",headers:{"Authorization":"Bearer "+token},body:formData});
 const d=await r.json();
-if(d.success){
-// 后端已广播消息，直接显示（乐观更新）
-addMessage(d.data);
-}else{alert(d.error||"上传失败")}
+if(d.success)addMessage(d.data);
+else alert(d.error||"上传失败");
 }catch(err){alert("上传失败")}
 finally{hideUploadProgress()}
 e.target.value="";
@@ -451,61 +422,27 @@ ws.onopen=onWsOpen;
 ws.onclose=onWsClose;
 ws.onerror=onWsError;
 ws.onmessage=onWsMessage;
-}catch(e){
-console.error("WebSocket连接失败:",e);
-scheduleReconnect();
-}
+}catch(e){console.error("WebSocket连接失败:",e);scheduleReconnect()}
 }
 
-function onWsOpen(){
-wsReconnectAttempts=0;
-wsReconnectDelay=1000;
-updateStatus("在线","on");
-startHeartbeat();
-}
-
-function onWsClose(event){
-stopHeartbeat();
-updateStatus("离线","");
-if(event.code!==1000&&event.code!==1001){
-scheduleReconnect();
-}
-}
-
-function onWsError(error){
-stopHeartbeat();
-}
-
+function onWsOpen(){wsReconnectAttempts=0;wsReconnectDelay=1000;updateStatus("在线","on");startHeartbeat()}
+function onWsClose(event){stopHeartbeat();updateStatus("离线","");if(event.code!==1000&&event.code!==1001)scheduleReconnect()}
+function onWsError(error){stopHeartbeat()}
 function onWsMessage(e){
 const m=JSON.parse(e.data);
-if(m.event==="pong"){
-wsLastPong=Date.now();
-return;
-}
+if(m.event==="pong"){wsLastPong=Date.now();return}
 if(m.event==="message"){
-if(m.data.senderId){
-onlineUsers.add(m.data.senderId);
-}
-if(m.data.groupId===groupId){
-// 通过去重机制添加消息
-addMessage(m.data);
-}
+if(m.data.senderId)onlineUsers.add(m.data.senderId);
+if(m.data.groupId===groupId)addMessage(m.data);
 }
 }
 
 function scheduleReconnect(){
-if(wsReconnectAttempts>=wsMaxReconnectAttempts){
-updateStatus("连接失败","");
-return;
-}
+if(wsReconnectAttempts>=wsMaxReconnectAttempts){updateStatus("连接失败","");return}
 wsReconnectAttempts++;
 const delay=Math.min(wsReconnectDelay*Math.pow(2,wsReconnectAttempts-1),30000);
 updateStatus("重连中("+wsReconnectAttempts+")","reconnecting");
-setTimeout(()=>{
-if(!ws||ws.readyState===WebSocket.CLOSED){
-connectWebSocket();
-}
-},delay);
+setTimeout(()=>{if(!ws||ws.readyState===WebSocket.CLOSED)connectWebSocket()},delay);
 }
 
 function startHeartbeat(){
@@ -513,28 +450,13 @@ stopHeartbeat();
 wsLastPong=Date.now();
 wsHeartbeatInterval=setInterval(()=>{
 if(ws&&ws.readyState===WebSocket.OPEN){
-if(Date.now()-wsLastPong>60000){
-ws.close();
-return;
-}
+if(Date.now()-wsLastPong>60000){ws.close();return}
 ws.send(JSON.stringify({event:"ping"}));
 }
 },30000);
 }
-
-function stopHeartbeat(){
-if(wsHeartbeatInterval){
-clearInterval(wsHeartbeatInterval);
-wsHeartbeatInterval=null;
-}
-}
-
-function updateStatus(text,cls){
-const status=$("status");
-status.textContent=text;
-status.className="status";
-if(cls)status.classList.add(cls);
-}
+function stopHeartbeat(){if(wsHeartbeatInterval){clearInterval(wsHeartbeatInterval);wsHeartbeatInterval=null}}
+function updateStatus(text,cls){const status=$("status");status.textContent=text;status.className="status";if(cls)status.classList.add(cls)}
 
 function showAdmin(){
 $("channelView").classList.add("hidden");
@@ -544,14 +466,12 @@ checkAdminPermissions();
 loadUsers();loadGroups();loadIps();loadPermissions();
 }
 function showChannel(){$("channelView").classList.remove("hidden");$("chatView").classList.add("hidden");$("adminView").classList.add("hidden")}
-
 function adminTab(name){
 document.querySelectorAll(".admin-tab").forEach(t=>t.classList.remove("on"));
 document.querySelectorAll(".admin-section").forEach(s=>s.classList.remove("on"));
 event.target.classList.add("on");
 $(name+"Section").classList.add("on");
 }
-
 function checkAdminPermissions(){
 const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
@@ -570,7 +490,7 @@ const d=await api("/api/admin/users",{method:"POST",body:JSON.stringify(body)});
 if(d.success){
 $("userRes").innerHTML='<div class="success">创建成功</div><div style="font-size:12px;margin-top:8px">UID: '+d.data.uid+'<br>昵称: '+d.data.nickname+'<br>密码: '+d.data.password+'</div>';
 $("newUid").value="";$("newNick").value="";$("newPwd").value="";loadUsers();
-}else{$("userRes").innerHTML='<div class="err">'+d.error+'</div>'}
+}else $("userRes").innerHTML='<div class="err">'+d.error+'</div>';
 }catch(e){$("userRes").innerHTML='<div class="err">网络错误</div>'}
 }
 
@@ -598,7 +518,7 @@ if(hasPerm("permission_grant"))actions+='<button class="btn sm success" data-act
 }
 const permTags=(u.permissions||[]).length?'<div class="permission-list">'+(u.permissions||[]).slice(0,5).map(p=>'<span class="permission-tag">'+p+'</span>').join("")+(u.permissions.length>5?'<span class="permission-tag">+'+(u.permissions.length-5)+'</span>':"")+"</div>":"";
 return'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(u.nickname)+'</span>'+badges+'</div><div class="item-info">UID: '+u.uid+(u.lastIp?" | IP: "+u.lastIp:"")+'</div>'+permTags+(actions?'<div class="item-actions">'+actions+'</div>':"")+"</div>";
-}).join(""):'<div class="empty">暂无用户</div>'
+}).join(""):'<div class="empty">暂无用户</div>';
 }
 }catch(e){}
 }
@@ -615,7 +535,7 @@ let actions="";
 if(hasPerm("message_delete"))actions+='<button class="btn sm" data-act="clearGroup" data-gid="'+g.id+'">清空</button>';
 if(hasPerm("group_delete"))actions+='<button class="btn sm danger" data-act="deleteGroup" data-gid="'+g.id+'">删除</button>';
 return'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(g.name)+'</span><span class="item-badge">'+g.memberCount+'人</span></div><div class="item-info">暗号: '+esc(g.name)+'</div>'+(actions?'<div class="item-actions">'+actions+'</div>':"")+"</div>";
-}).join(""):'<div class="empty">暂无频道</div>'
+}).join(""):'<div class="empty">暂无频道</div>';
 }
 }catch(e){}
 }
@@ -624,14 +544,14 @@ async function loadIps(){
 try{
 const d=await api("/api/admin/ips");
 const el=$("ipList");
-if(d.success){el.innerHTML=d.data.length?d.data.map(ip=>'<div class="item-card"><div class="item-header"><span class="item-title">'+ip.ip+'</span><button class="btn sm" data-act="unbanIp" data-ip="'+ip.ip+'">解封</button></div><div class="item-info">'+(ip.reason||"")+" | "+ip.createdAt+'</div></div>').join(""):'<div class="empty">暂无封禁IP</div>'}
+if(d.success)el.innerHTML=d.data.length?d.data.map(ip=>'<div class="item-card"><div class="item-header"><span class="item-title">'+ip.ip+'</span><button class="btn sm" data-act="unbanIp" data-ip="'+ip.ip+'">解封</button></div><div class="item-info">'+(ip.reason||"")+" | "+ip.createdAt+'</div></div>').join(""):'<div class="empty">暂无封禁IP</div>';
 }catch(e){}
 }
 
 async function loadPermissions(){
 try{
 const d=await api("/api/admin/permissions");
-if(d.success){allPermissions=d.data}
+if(d.success)allPermissions=d.data;
 }catch(e){}
 }
 
@@ -641,42 +561,20 @@ const menu=$("userMenu");
 const isSelf=sid===user.id;
 const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
-
 let userInfo=null;
-try{
-const d=await api("/api/users/"+sid);
-if(d.success)userInfo=d.data;
-}catch(err){}
-
+try{const d=await api("/api/users/"+sid);if(d.success)userInfo=d.data}catch(err){}
 const avatarEl=$("menuAvatar");
-if(userInfo&&userInfo.avatar){
-avatarEl.innerHTML='<img src="'+userInfo.avatar+'" alt="">';
-}else{
-avatarEl.textContent=nick.charAt(0).toUpperCase();
-}
-
+if(userInfo&&userInfo.avatar)avatarEl.innerHTML='<img src="'+userInfo.avatar+'" alt="">';
+else avatarEl.textContent=nick.charAt(0).toUpperCase();
 $("menuUserName").textContent=nick;
 $("menuUserInfo").textContent="UID: "+(userInfo?userInfo.uid:sid);
-
 const statusEl=$("menuUserStatus");
 if(userInfo){
-if(userInfo.status==="banned"){
-statusEl.textContent="已封禁";
-statusEl.className="user-menu-status offline";
-}else if(userInfo.muted){
-statusEl.textContent="禁言中";
-statusEl.className="user-menu-status muted";
-}else if(userInfo.online){
-statusEl.textContent="在线";
-statusEl.className="user-menu-status online";
-}else{
-statusEl.textContent="离线";
-statusEl.className="user-menu-status offline";
-}
-}else{
-statusEl.textContent="";
-}
-
+if(userInfo.status==="banned"){statusEl.textContent="已封禁";statusEl.className="user-menu-status offline"}
+else if(userInfo.muted){statusEl.textContent="禁言中";statusEl.className="user-menu-status muted"}
+else if(userInfo.online){statusEl.textContent="在线";statusEl.className="user-menu-status online"}
+else{statusEl.textContent="离线";statusEl.className="user-menu-status offline"}
+}else statusEl.textContent="";
 let actionsHtml="";
 if(!isSelf){
 if(hasPerm("user_mute"))actionsHtml+='<button class="user-menu-item warn" data-act="menuMute">禁言</button>';
@@ -686,7 +584,6 @@ if(hasPerm("user_ban"))actionsHtml+='<button class="user-menu-item danger" data-
 if(hasPerm("permission_grant"))actionsHtml+='<button class="user-menu-item" data-act="menuGrant">管理权限</button>';
 }
 $("menuActions").innerHTML=actionsHtml;
-
 menuTargetUser={uid:userInfo?userInfo.uid:sid,userId:sid,nick};
 menu.style.left=Math.min(e.clientX,window.innerWidth-200)+"px";
 menu.style.top=Math.min(e.clientY,window.innerHeight-300)+"px";
@@ -694,43 +591,25 @@ menu.classList.remove("hidden");
 }
 
 function closeUserMenu(){$("userMenu").classList.add("hidden")}
-
-function openPermModal(uid,nick){
-menuTargetUser={uid,nick};
-$("permUserName").textContent=nick;
-renderPermGrid(uid);
-$("permModal").classList.remove("hidden");
-}
-
+function openPermModal(uid,nick){menuTargetUser={uid,nick};$("permUserName").textContent=nick;renderPermGrid(uid);$("permModal").classList.remove("hidden")}
 function renderPermGrid(uid){
 const grid=$("permGrid");
 const currentPerms=userPermissions[uid]||[];
-grid.innerHTML=allPermissions.map(p=>{
-const checked=currentPerms.includes(p.name)?"checked":"";
-return'<div class="permission-item"><label><input type="checkbox" '+checked+' data-perm="'+p.name+'"> '+p.description+'</label></div>';
-}).join("");
+grid.innerHTML=allPermissions.map(p=>'<div class="permission-item"><label><input type="checkbox" '+(currentPerms.includes(p.name)?"checked":"")+' data-perm="'+p.name+'"> '+p.description+'</label></div>').join("");
 }
 
 async function savePermissions(){
 if(!menuTargetUser)return;
 const checkboxes=document.querySelectorAll("#permGrid input[type='checkbox']");
-const permToGrant=[];
-const permToRevoke=[];
+const permToGrant=[],permToRevoke=[];
 checkboxes.forEach(cb=>{
 const permName=cb.dataset.perm;
 const currentPerms=userPermissions[menuTargetUser.uid]||[];
-if(cb.checked&&!currentPerms.includes(permName)){
-permToGrant.push(permName);
-}else if(!cb.checked&&currentPerms.includes(permName)){
-permToRevoke.push(permName);
-}
+if(cb.checked&&!currentPerms.includes(permName))permToGrant.push(permName);
+else if(!cb.checked&¤tPerms.includes(permName))permToRevoke.push(permName);
 });
-for(const permName of permToGrant){
-await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"POST",body:JSON.stringify({permission_name:permName})});
-}
-for(const permName of permToRevoke){
-await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"DELETE",body:JSON.stringify({permission_name:permName})});
-}
+for(const permName of permToGrant)await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"POST",body:JSON.stringify({permission_name:permName})});
+for(const permName of permToRevoke)await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"DELETE",body:JSON.stringify({permission_name:permName})});
 $("permModal").classList.add("hidden");
 loadUsers();
 }
@@ -744,116 +623,35 @@ selectedMuteDuration=30;
 $("muteModal").classList.remove("hidden");
 }
 
-// Event delegation
 document.addEventListener("click",async function(e){
 const t=e.target;
 const act=t.dataset.act;
-
-if(act==="ban"&&confirm("确定封禁该用户?")){
-await api("/api/admin/users/"+t.dataset.uid+"/ban",{method:"PUT"});
-loadUsers();
-}
-if(act==="unban"){
-await api("/api/admin/users/"+t.dataset.uid+"/unban",{method:"PUT"});
-loadUsers();
-}
-if(act==="kick"){
-await api("/api/admin/users/"+t.dataset.uid+"/kick",{method:"PUT"});
-alert("已踢出");
-}
-if(act==="delete"&&confirm("确定删除该用户?")){
-await api("/api/admin/users/"+t.dataset.uid,{method:"DELETE"});
-loadUsers();
-}
-if(act==="mute"){
-openMuteModal(t.dataset.uid,t.dataset.nick);
-}
-if(act==="perm"){
-openPermModal(t.dataset.uid,t.dataset.nick);
-}
-if(act==="clearGroup"&&confirm("确定清空该频道所有消息?")){
-await api("/api/messages/group/"+t.dataset.gid,{method:"DELETE"});
-alert("已清空");
-}
-if(act==="deleteGroup"&&confirm("确定删除该频道?")){
-await api("/api/admin/groups/"+t.dataset.gid,{method:"DELETE"});
-loadGroups();
-}
-if(act==="unbanIp"){
-await api("/api/admin/ips/"+t.dataset.ip,{method:"DELETE"});
-loadIps();
-}
-if(act==="menuMute"){
-closeUserMenu();
-if(menuTargetUser)openMuteModal(menuTargetUser.uid,menuTargetUser.nick);
-}
-if(act==="menuUnmute"){
-closeUserMenu();
-if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/unmute",{method:"PUT"});alert("已解除禁言");}
-}
-if(act==="menuKick"){
-closeUserMenu();
-if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/kick",{method:"PUT"});alert("已踢出");}
-}
-if(act==="menuBan"){
-closeUserMenu();
-if(menuTargetUser&&confirm("确定封禁该用户?")){
-await api("/api/admin/users/"+menuTargetUser.uid+"/ban",{method:"PUT"});
-alert("已封禁");
-}
-}
-if(act==="menuGrant"){
-closeUserMenu();
-if(menuTargetUser)openPermModal(menuTargetUser.uid,menuTargetUser.nick);
-}
-
-// Channel card click
-if(t.closest(".channel-card")){
-const gid=t.closest(".channel-card").dataset.gid;
-if(gid){groupId=gid;showChat();}
-}
-
-// Mute option click
-if(t.classList.contains("mute-option")){
-selectedMuteDuration=parseInt(t.dataset.duration);
-document.querySelectorAll(".mute-option").forEach(el=>el.classList.remove("on"));
-t.classList.add("on");
-}
-
-// Admin tab click
-if(t.classList.contains("admin-tab")){
-adminTab(t.dataset.tab);
-}
-
-// Avatar click in messages
-if(t.closest(".msg-avatar")){
-const av=t.closest(".msg-avatar");
-showUserMenu(e,av.dataset.sid,av.dataset.nick);
-}
-
-// Close user menu on outside click
-if(!$("userMenu").contains(t)&&!t.closest(".msg-avatar")){
-closeUserMenu();
-}
+if(act==="ban"&&confirm("确定封禁该用户?")){await api("/api/admin/users/"+t.dataset.uid+"/ban",{method:"PUT"});loadUsers()}
+if(act==="unban"){await api("/api/admin/users/"+t.dataset.uid+"/unban",{method:"PUT"});loadUsers()}
+if(act==="kick"){await api("/api/admin/users/"+t.dataset.uid+"/kick",{method:"PUT"});alert("已踢出")}
+if(act==="delete"&&confirm("确定删除该用户?")){await api("/api/admin/users/"+t.dataset.uid,{method:"DELETE"});loadUsers()}
+if(act==="mute")openMuteModal(t.dataset.uid,t.dataset.nick);
+if(act==="perm")openPermModal(t.dataset.uid,t.dataset.nick);
+if(act==="clearGroup"&&confirm("确定清空该频道所有消息?")){await api("/api/messages/group/"+t.dataset.gid,{method:"DELETE"});alert("已清空")}
+if(act==="deleteGroup"&&confirm("确定删除该频道?")){await api("/api/admin/groups/"+t.dataset.gid,{method:"DELETE"});loadGroups()}
+if(act==="unbanIp"){await api("/api/admin/ips/"+t.dataset.ip,{method:"DELETE"});loadIps()}
+if(act==="menuMute"){closeUserMenu();if(menuTargetUser)openMuteModal(menuTargetUser.uid,menuTargetUser.nick)}
+if(act==="menuUnmute"){closeUserMenu();if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/unmute",{method:"PUT"});alert("已解除禁言")}}
+if(act==="menuKick"){closeUserMenu();if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/kick",{method:"PUT"});alert("已踢出")}}
+if(act==="menuBan"){closeUserMenu();if(menuTargetUser&&confirm("确定封禁该用户?")){await api("/api/admin/users/"+menuTargetUser.uid+"/ban",{method:"PUT"});alert("已封禁")}}
+if(act==="menuGrant"){closeUserMenu();if(menuTargetUser)openPermModal(menuTargetUser.uid,menuTargetUser.nick)}
+if(t.closest(".channel-card")){const gid=t.closest(".channel-card").dataset.gid;if(gid){groupId=gid;showChat()}}
+if(t.classList.contains("mute-option")){selectedMuteDuration=parseInt(t.dataset.duration);document.querySelectorAll(".mute-option").forEach(el=>el.classList.remove("on"));t.classList.add("on")}
+if(t.classList.contains("admin-tab"))adminTab(t.dataset.tab);
+if(t.closest(".msg-avatar")){const av=t.closest(".msg-avatar");showUserMenu(e,av.dataset.sid,av.dataset.nick)}
+if(!$("userMenu").contains(t)&&!t.closest(".msg-avatar"))closeUserMenu();
 });
 
-// Initialize
 window.onload=function(){
 typeWriter($("logoText"),"ARCANUM",0);
 typeWriter($("logoText2"),"ARCANUM",0);
-
 const t=localStorage.getItem("t"),u=localStorage.getItem("u");
-if(t&&u){
-try{
-token=t;
-user=JSON.parse(u);
-showMain();
-}catch(e){
-localStorage.clear();
-}
-}
-
-// Bind events
+if(t&&u){try{token=t;user=JSON.parse(u);showMain()}catch(e){localStorage.clear()}}
 $("loginBtn").onclick=login;
 $("loginPwd").onkeydown=function(e){if(e.key==="Enter")login()};
 $("enterChannelBtn").onclick=enterChannel;
@@ -871,25 +669,17 @@ $("createChannelBtn").onclick=function(){
 const name=$("newChan").value.trim();if(!name)return;
 api("/api/groups",{method:"POST",body:JSON.stringify({name})}).then(d=>{
 if(d.success){$("chanRes").innerHTML='<div class="success">创建成功: '+name+'</div>';$("newChan").value="";loadGroups()}
-else{$("chanRes").innerHTML='<div class="err">'+d.error+'</div>'}
+else $("chanRes").innerHTML='<div class="err">'+d.error+'</div>';
 });
 };
 $("closeUserMenuBtn").onclick=closeUserMenu;
 $("closePermModalBtn").onclick=function(){$("permModal").classList.add("hidden")};
 $("closeMuteModalBtn").onclick=function(){$("muteModal").classList.add("hidden")};
 $("savePermsBtn").onclick=savePermissions;
-$("confirmMuteBtn").onclick=async function(){
-if(!menuTargetUser)return;
-await api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})});
-$("muteModal").classList.add("hidden");
-loadUsers();
-};
-
-// Close modals on overlay click
+$("confirmMuteBtn").onclick=async function(){if(!menuTargetUser)return;await api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})});$("muteModal").classList.add("hidden");loadUsers()};
 $("permModal").onclick=function(e){if(e.target===this)$("permModal").classList.add("hidden")};
 $("muteModal").onclick=function(e){if(e.target===this)$("muteModal").classList.add("hidden")};
 };
-
 })();
 </script>
 </body>
