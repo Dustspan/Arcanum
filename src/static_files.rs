@@ -45,23 +45,23 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .msg-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#000;flex-shrink:0;cursor:pointer;overflow:hidden;transition:transform .2s}
 .msg-avatar:hover{transform:scale(1.1)}
 .msg-avatar img{width:100%;height:100%;object-fit:cover}
-.msg-content{max-width:70%;display:flex;flex-direction:column}
-.msg-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.4;position:relative}
+.msg-content{max-width:70%;display:flex;flex-direction:column;position:relative}
+.msg-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.4;position:relative;overflow:hidden;max-width:100%;word-wrap:break-word}
 .msg-bubble.in{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px}
 .msg-bubble.out{background:linear-gradient(135deg,var(--accent),#a855f7);color:#000;border-bottom-right-radius:4px}
 .msg-nick{font-size:11px;color:var(--accent);margin-bottom:4px;font-weight:500}
 .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right;opacity:.7}
-.msg-img{max-width:200px;border-radius:10px;cursor:pointer;transition:transform .2s}
+.msg-img{display:block;max-width:100%;width:auto;height:auto;max-height:200px;object-fit:contain;border-radius:8px;cursor:pointer;transition:transform .2s;margin:-2px -6px}
 .msg-img:hover{transform:scale(1.02)}
 .msg-file{display:flex;align-items:center;gap:10px;padding:10px;background:rgba(0,0,0,.1);border-radius:8px;cursor:pointer;transition:background .2s}
 .msg-file:hover{background:rgba(0,0,0,.2)}
 .msg-file-icon{font-size:24px}
-.msg-file-info{flex:1}
+.msg-file-info{flex:1;min-width:0}
 .msg-file-name{font-size:12px;font-weight:500;word-break:break-all}
 .msg-file-size{font-size:10px;color:var(--muted)}
-.msg-actions{display:none;position:absolute;top:-24px;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px;z-index:10}
-.msg-row:hover .msg-actions{display:flex;gap:4px}
-.msg-action{background:none;border:none;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;border-radius:4px}
+.msg-actions{display:none;position:absolute;top:-28px;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.msg-row:hover .msg-actions{display:flex;gap:2px}
+.msg-action{background:none;border:none;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;border-radius:4px;white-space:nowrap}
 .msg-action:hover{color:var(--accent);background:var(--bg2)}
 .msg-action.danger:hover{color:var(--error)}
 .chat-input-wrap{background:var(--bg);border-top:1px solid var(--border);padding:12px}
@@ -263,7 +263,7 @@ Vue.createApp({
     },
     async loadGroups() {
       const d = await this.api('/api/groups');
-      if (d.success) this.groups = d.data;
+      if (d.success) this.groups = d.data || [];
     },
     async doEnterChannel() {
       if (!this.channelInput.trim()) return;
@@ -306,37 +306,26 @@ Vue.createApp({
       const box = this.$refs.msgsBox;
       if (box) box.scrollTop = box.scrollHeight;
     },
-    // 检查消息是否已存在
     messageExists(id) {
       return this.messages.some(m => m.id === id);
     },
-    // 添加消息（如果不存在）
     addMessageIfNotExists(msg) {
       if (!this.messageExists(msg.id)) {
         this.messages.push(msg);
         this.$nextTick(() => this.scrollToBottom());
       }
     },
-    // 发送消息
     async doSendMsg() {
       if (!this.msgInput.trim() || !this.currentGroup) return;
       const content = this.msgInput;
       this.msgInput = '';
-      
-      // 发送到服务器
       const d = await this.api('/api/messages', {
         method: 'POST',
-        body: JSON.stringify({ 
-          group_id: this.currentGroup.id, 
-          content: content 
-        })
+        body: JSON.stringify({ group_id: this.currentGroup.id, content: content })
       });
-      
       if (d.success && d.data) {
-        // 直接用API返回的消息添加到列表
         this.addMessageIfNotExists(d.data);
       } else {
-        // 恢复输入内容
         this.msgInput = content;
         alert('发送失败: ' + (d.error || '未知错误'));
       }
@@ -368,68 +357,62 @@ Vue.createApp({
     async uploadFile(e) {
       const file = e.target.files[0];
       if (!file || !this.currentGroup) return;
-      
       const isImage = file.type.startsWith('image/');
       const maxSize = 5 * 1024 * 1024;
-      
       this.showUploadProgress = true;
       this.uploadProgress = 0;
-      
       try {
         let uploadFile = file;
-        
         if (isImage && file.size > maxSize) {
           this.uploadProgress = 30;
           uploadFile = await this.compressImage(file, 800, 0.7);
         }
-        
         if (uploadFile.size > maxSize) {
           alert('文件太大，请选择小于5MB的文件');
           this.showUploadProgress = false;
           e.target.value = '';
           return;
         }
-        
         this.uploadProgress = 50;
-        
         const formData = new FormData();
         formData.append('file', uploadFile, file.name);
-        
         const r = await fetch(location.origin + '/api/messages/file/' + this.currentGroup.id, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + this.token },
           body: formData
         });
-        
         this.uploadProgress = 90;
         const text = await r.text();
         const d = JSON.parse(text);
-        
         if (d.success && d.data) {
-          // 直接用API返回的消息添加到列表
           this.addMessageIfNotExists(d.data);
         } else {
           alert('上传失败: ' + (d.error || '未知错误'));
         }
-        
         this.uploadProgress = 100;
-        
       } catch (e) {
         alert('上传失败: ' + e.message);
       }
-      
       setTimeout(() => { this.showUploadProgress = false; }, 500);
       e.target.value = '';
     },
-    async recallMessage(id) {
+    // 撤回消息
+    async recallMessage(msg) {
       if (!confirm('确定撤回该消息?')) return;
-      const d = await this.api('/api/messages/' + id + '/recall', { method: 'POST' });
+      const d = await this.api('/api/messages/' + msg.id + '/recall', { method: 'POST' });
       if (d.success) {
-        const idx = this.messages.findIndex(m => m.id === id);
+        const idx = this.messages.findIndex(m => m.id === msg.id);
         if (idx >= 0) this.messages.splice(idx, 1);
       } else {
         alert(d.error || '撤回失败');
       }
+    },
+    // 判断消息是否可以撤回（2分钟内）
+    canRecall(msg) {
+      if (msg.senderId !== this.user.id) return false;
+      const msgTime = new Date(msg.createdAt).getTime();
+      const now = Date.now();
+      return (now - msgTime) < 2 * 60 * 1000; // 2分钟内
     },
     renderMsg(m) {
       if (m.msgType === 'image') {
@@ -466,70 +449,38 @@ Vue.createApp({
     connectWS() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       this.ws = new WebSocket(proto + '//' + location.host + '/ws?token=' + this.token);
-      
       this.ws.onmessage = (e) => {
         try {
           const m = JSON.parse(e.data);
-          
-          // 处理消息
-          if (m.event === 'message' && m.data) {
-            // 如果在当前频道，添加消息
-            if (m.data.groupId === this.currentGroup?.id) {
-              this.addMessageIfNotExists(m.data);
-            }
+          if (m.event === 'message' && m.data && m.data.groupId === this.currentGroup?.id) {
+            this.addMessageIfNotExists(m.data);
           }
-          
-          // 处理私聊
           if (m.event === 'direct_message' && m.data) {
             if (this.dmTarget && (m.data.senderId === this.dmTarget.id || m.data.receiverId === this.dmTarget.id)) {
               this.dmMessages.push(m.data);
             }
           }
-          
-          // 处理消息撤回
-          if (m.event === 'message_recall' && m.data) {
-            if (m.data.groupId === this.currentGroup?.id) {
-              const idx = this.messages.findIndex(msg => msg.id === m.data.id);
-              if (idx >= 0) this.messages.splice(idx, 1);
+          if (m.event === 'message_recall' && m.data && m.data.groupId === this.currentGroup?.id) {
+            const idx = this.messages.findIndex(msg => msg.id === m.data.id);
+            if (idx >= 0) this.messages.splice(idx, 1);
+          }
+          if (m.event === 'typing' && m.data && m.data.groupId === this.currentGroup?.id && m.data.userId !== this.user.id) {
+            const nickname = m.data.nickname;
+            if (m.data.isTyping) {
+              if (!this.typingUsers.includes(nickname)) this.typingUsers.push(nickname);
+            } else {
+              const idx = this.typingUsers.indexOf(nickname);
+              if (idx >= 0) this.typingUsers.splice(idx, 1);
             }
           }
-          
-          // 处理输入状态
-          if (m.event === 'typing' && m.data) {
-            if (m.data.groupId === this.currentGroup?.id && m.data.userId !== this.user.id) {
-              const nickname = m.data.nickname;
-              if (m.data.isTyping) {
-                if (!this.typingUsers.includes(nickname)) {
-                  this.typingUsers.push(nickname);
-                }
-              } else {
-                const idx = this.typingUsers.indexOf(nickname);
-                if (idx >= 0) this.typingUsers.splice(idx, 1);
-              }
-            }
-          }
-          
-          // 处理好友请求
-          if (m.event === 'friend_request') {
-            this.loadFriendRequests();
-          }
-        } catch (err) {
-          console.error('WebSocket消息解析错误:', err);
-        }
+          if (m.event === 'friend_request') this.loadFriendRequests();
+        } catch (err) {}
       };
-      
       this.ws.onclose = () => setTimeout(() => this.connectWS(), 3000);
-      this.ws.onerror = (err) => console.error('WebSocket错误:', err);
     },
     sendTypingStatus(isTyping) {
       if (this.ws && this.ws.readyState === WebSocket.OPEN && this.currentGroup) {
-        this.ws.send(JSON.stringify({
-          event: 'typing',
-          data: {
-            groupId: this.currentGroup.id,
-            isTyping: isTyping
-          }
-        }));
+        this.ws.send(JSON.stringify({ event: 'typing', data: { groupId: this.currentGroup.id, isTyping: isTyping } }));
       }
     },
     toggleTheme() {
@@ -539,9 +490,7 @@ Vue.createApp({
     },
     openUserMenu(e, userId, nickname) {
       e.stopPropagation();
-      this.api('/api/users/' + userId).then(d => {
-        if (d.success) this.userMenu.online = d.data.online;
-      });
+      this.api('/api/users/' + userId).then(d => { if (d.success) this.userMenu.online = d.data.online; });
       this.userMenu.show = true;
       this.userMenu.x = Math.min(e.clientX, window.innerWidth - 170);
       this.userMenu.y = Math.min(e.clientY, window.innerHeight - 180);
@@ -549,213 +498,100 @@ Vue.createApp({
       this.userMenu.nickname = nickname;
       this.userMenu.uid = userId;
     },
-    closeUserMenu() {
-      this.userMenu.show = false;
-    },
+    closeUserMenu() { this.userMenu.show = false; },
     startDMFromMenu() {
       this.dmTarget = { id: this.userMenu.userId, nickname: this.userMenu.nickname, online: this.userMenu.online };
       this.dmMessages = [];
       this.userMenu.show = false;
     },
-    closeDM() {
-      this.dmTarget = null;
-      this.dmMessages = [];
-    },
+    closeDM() { this.dmTarget = null; this.dmMessages = []; },
     async sendDM() {
       if (!this.dmInput.trim() || !this.dmTarget) return;
       const content = this.dmInput;
       this.dmInput = '';
-      const d = await this.api('/api/direct/' + this.dmTarget.id, {
-        method: 'POST',
-        body: JSON.stringify({ content })
-      });
-      if (!d.success) {
-        this.dmInput = content;
-        alert('发送失败: ' + (d.error || '未知错误'));
-      }
+      const d = await this.api('/api/direct/' + this.dmTarget.id, { method: 'POST', body: JSON.stringify({ content }) });
+      if (!d.success) { this.dmInput = content; alert('发送失败: ' + (d.error || '未知错误')); }
     },
-    async loadFriends() {
-      const d = await this.api('/api/friends');
-      if (d.success) this.friends = d.data || [];
-    },
+    async loadFriends() { const d = await this.api('/api/friends'); if (d.success) this.friends = d.data || []; },
     async loadFriendRequests() {
       const d = await this.api('/api/friends/requests');
-      if (d.success) {
-        this.friendRequests = d.data || [];
-        this.friendRequestCount = this.friendRequests.length;
-      }
+      if (d.success) { this.friendRequests = d.data || []; this.friendRequestCount = this.friendRequests.length; }
     },
     async acceptFriend(userId) {
       const d = await this.api('/api/friends/' + userId + '/accept', { method: 'POST' });
-      if (d.success) {
-        this.loadFriendRequests();
-        this.loadFriends();
-      } else {
-        alert(d.error || '失败');
-      }
+      if (d.success) { this.loadFriendRequests(); this.loadFriends(); } else alert(d.error || '失败');
     },
     doAddFriend() {
-      this.api('/api/friends/' + this.userMenu.userId, { method: 'POST' }).then(d => {
-        alert(d.success ? '好友请求已发送' : (d.error || '失败'));
-      });
+      this.api('/api/friends/' + this.userMenu.userId, { method: 'POST' }).then(d => { alert(d.success ? '好友请求已发送' : (d.error || '失败')); });
       this.userMenu.show = false;
     },
-    startDM(friend) {
-      this.dmTarget = { id: friend.id, nickname: friend.nickname, online: friend.online };
-      this.dmMessages = [];
-    },
-    openAdmin() {
-      this.showAdmin = true;
-      this.loadAllPermissions();
-      if (this.adminTab === 'users') this.loadUsers();
-    },
-    async loadAllPermissions() {
-      const d = await this.api('/api/admin/permissions');
-      if (d.success) this.allPermissions = d.data || [];
-    },
-    async loadUsers() {
-      const d = await this.api('/api/admin/users');
-      if (d.success) this.users = d.data || [];
-    },
+    startDM(friend) { this.dmTarget = { id: friend.id, nickname: friend.nickname, online: friend.online }; this.dmMessages = []; },
+    openAdmin() { this.showAdmin = true; this.loadAllPermissions(); if (this.adminTab === 'users') this.loadUsers(); },
+    async loadAllPermissions() { const d = await this.api('/api/admin/permissions'); if (d.success) this.allPermissions = d.data || []; },
+    async loadUsers() { const d = await this.api('/api/admin/users'); if (d.success) this.users = d.data || []; },
     async doCreateUser() {
-      if (!this.newUser.nickname || !this.newUser.password) {
-        alert('请填写昵称和密码');
-        return;
-      }
+      if (!this.newUser.nickname || !this.newUser.password) { alert('请填写昵称和密码'); return; }
       this.createUserLoading = true;
       const d = await this.api('/api/admin/users', { method: 'POST', body: JSON.stringify(this.newUser) });
       this.createUserLoading = false;
-      if (d.success) {
-        this.newUser = { uid: '', nickname: '', password: '' };
-        this.loadUsers();
-        alert('创建成功');
-      } else {
-        alert(d.error || '创建失败');
-      }
+      if (d.success) { this.newUser = { uid: '', nickname: '', password: '' }; this.loadUsers(); alert('创建成功'); } else alert(d.error || '创建失败');
     },
     async doBanUser(uid) {
       if (!confirm('确定封禁该用户?')) return;
       const d = await this.api('/api/admin/users/' + uid + '/ban', { method: 'PUT' });
       alert(d.success ? '已封禁' : (d.error || '失败'));
-      this.loadUsers();
-      this.userMenu.show = false;
+      this.loadUsers(); this.userMenu.show = false;
     },
     async doUnbanUser(uid) {
       const d = await this.api('/api/admin/users/' + uid + '/unban', { method: 'PUT' });
-      alert(d.success ? '已解封' : (d.error || '失败'));
-      this.loadUsers();
+      alert(d.success ? '已解封' : (d.error || '失败')); this.loadUsers();
     },
     async doMuteUser(uid) {
-      const d = await this.api('/api/admin/users/' + uid + '/mute', {
-        method: 'PUT',
-        body: JSON.stringify({ duration_minutes: 30 })
-      });
+      const d = await this.api('/api/admin/users/' + uid + '/mute', { method: 'PUT', body: JSON.stringify({ duration_minutes: 30 }) });
       alert(d.success ? '已禁言30分钟' : (d.error || '失败'));
-      this.loadUsers();
-      this.userMenu.show = false;
+      this.loadUsers(); this.userMenu.show = false;
     },
     async doKickUser(uid) {
       if (!confirm('确定踢出该用户?')) return;
       const d = await this.api('/api/admin/users/' + uid + '/kick', { method: 'PUT' });
       alert(d.success ? '已踢出' : (d.error || '失败'));
-      this.loadUsers();
-      this.userMenu.show = false;
+      this.loadUsers(); this.userMenu.show = false;
     },
-    async loadAllGroups() {
-      const d = await this.api('/api/admin/groups');
-      if (d.success) this.allGroups = d.data || [];
-    },
+    async loadAllGroups() { const d = await this.api('/api/admin/groups'); if (d.success) this.allGroups = d.data || []; },
     async doCreateGroup() {
-      if (!this.newGroup.name.trim()) {
-        alert('请输入频道名称');
-        return;
-      }
+      if (!this.newGroup.name.trim()) { alert('请输入频道名称'); return; }
       this.createGroupLoading = true;
       const d = await this.api('/api/groups', { method: 'POST', body: JSON.stringify({ name: this.newGroup.name.trim() }) });
       this.createGroupLoading = false;
-      if (d.success) {
-        alert('频道创建成功');
-        this.newGroup.name = '';
-        this.loadAllGroups();
-        this.loadGroups();
-      } else {
-        alert(d.error || '创建失败');
-      }
+      if (d.success) { alert('频道创建成功'); this.newGroup.name = ''; this.loadAllGroups(); this.loadGroups(); } else alert(d.error || '创建失败');
     },
-    async doDeleteGroup(id) {
-      if (!confirm('确定删除该频道?')) return;
-      const d = await this.api('/api/admin/groups/' + id, { method: 'DELETE' });
-      if (d.success) this.loadAllGroups();
-    },
-    async doClearGroupMessages(id) {
-      if (!confirm('确定清空该频道所有消息?')) return;
-      const d = await this.api('/api/messages/group/' + id, { method: 'DELETE' });
-      alert(d.success ? '消息已清空' : (d.error || '失败'));
-    },
-    async loadWords() {
-      const d = await this.api('/api/admin/sensitive-words');
-      if (d.success) this.words = d.data || [];
-    },
+    async doDeleteGroup(id) { if (!confirm('确定删除该频道?')) return; const d = await this.api('/api/admin/groups/' + id, { method: 'DELETE' }); if (d.success) this.loadAllGroups(); },
+    async doClearGroupMessages(id) { if (!confirm('确定清空该频道所有消息?')) return; const d = await this.api('/api/messages/group/' + id, { method: 'DELETE' }); alert(d.success ? '消息已清空' : (d.error || '失败')); },
+    async loadWords() { const d = await this.api('/api/admin/sensitive-words'); if (d.success) this.words = d.data || []; },
     async doAddWord() {
       if (!this.newWord.word) { alert('请输入敏感词'); return; }
       const d = await this.api('/api/admin/sensitive-words', { method: 'POST', body: JSON.stringify(this.newWord) });
-      if (d.success) {
-        this.newWord = { word: '', replacement: '***' };
-        this.loadWords();
-      } else {
-        alert(d.error || '失败');
-      }
+      if (d.success) { this.newWord = { word: '', replacement: '***' }; this.loadWords(); } else alert(d.error || '失败');
     },
-    async doDeleteWord(id) {
-      const d = await this.api('/api/admin/sensitive-words/' + id, { method: 'DELETE' });
-      if (d.success) this.loadWords();
-    },
-    async loadStats() {
-      const d = await this.api('/api/admin/statistics');
-      if (d.success) this.stats = d.data || {};
-    },
-    openPermModal(u) {
-      this.permTarget = u;
-      this.permTargetPerms = [...(u.permissions || [])];
-      this.showPermModal = true;
-    },
-    togglePerm(name) {
-      const idx = this.permTargetPerms.indexOf(name);
-      if (idx >= 0) this.permTargetPerms.splice(idx, 1);
-      else this.permTargetPerms.push(name);
-    },
+    async doDeleteWord(id) { const d = await this.api('/api/admin/sensitive-words/' + id, { method: 'DELETE' }); if (d.success) this.loadWords(); },
+    async loadStats() { const d = await this.api('/api/admin/statistics'); if (d.success) this.stats = d.data || {}; },
+    openPermModal(u) { this.permTarget = u; this.permTargetPerms = [...(u.permissions || [])]; this.showPermModal = true; },
+    togglePerm(name) { const idx = this.permTargetPerms.indexOf(name); if (idx >= 0) this.permTargetPerms.splice(idx, 1); else this.permTargetPerms.push(name); },
     async savePerms() {
       if (!this.permTarget) return;
       const currentPerms = this.permTarget.permissions || [];
       const toGrant = this.permTargetPerms.filter(p => !currentPerms.includes(p));
       const toRevoke = currentPerms.filter(p => !this.permTargetPerms.includes(p));
-      for (const p of toGrant) {
-        await this.api('/api/admin/users/' + this.permTarget.uid + '/permissions', {
-          method: 'POST',
-          body: JSON.stringify({ permission_name: p })
-        });
-      }
-      for (const p of toRevoke) {
-        await this.api('/api/admin/users/' + this.permTarget.uid + '/permissions', {
-          method: 'DELETE',
-          body: JSON.stringify({ permission_name: p })
-        });
-      }
-      this.showPermModal = false;
-      this.loadUsers();
-      alert('权限已更新');
+      for (const p of toGrant) await this.api('/api/admin/users/' + this.permTarget.uid + '/permissions', { method: 'POST', body: JSON.stringify({ permission_name: p }) });
+      for (const p of toRevoke) await this.api('/api/admin/users/' + this.permTarget.uid + '/permissions', { method: 'DELETE', body: JSON.stringify({ permission_name: p }) });
+      this.showPermModal = false; this.loadUsers(); alert('权限已更新');
     }
   },
   mounted() {
     document.addEventListener('click', () => this.closeUserMenu());
     window._previewImage = (url) => { this.previewImageUrl = url; };
-    
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      this.theme = 'light';
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
-    
+    if (savedTheme === 'light') { this.theme = 'light'; document.documentElement.setAttribute('data-theme', 'light'); }
     const t = localStorage.getItem('t');
     const u = localStorage.getItem('u');
     if (t && u) {
@@ -771,23 +607,13 @@ Vue.createApp({
             this.connectWS();
             this.loadGroups();
             this.loadFriendRequests();
-          } else {
-            localStorage.clear();
-            this.token = '';
-            this.user = {};
-          }
+          } else { localStorage.clear(); this.token = ''; this.user = {}; }
         });
-      } catch (e) {
-        localStorage.clear();
-      }
+      } catch (e) { localStorage.clear(); }
     }
   },
   watch: {
-    msgInput(newVal, oldVal) {
-      if (this.currentGroup && newVal !== oldVal) {
-        this.sendTypingStatus(newVal.length > 0);
-      }
-    }
+    msgInput(newVal, oldVal) { if (this.currentGroup && newVal !== oldVal) this.sendTypingStatus(newVal.length > 0); }
   },
   template: `
 <div class="container" @click="closeUserMenu">
@@ -912,8 +738,9 @@ Vue.createApp({
               <div v-html="renderMsg(m)"></div>
               <div class="msg-time">{{formatTime(m.createdAt)}}</div>
             </div>
-            <div class="msg-actions" v-if="m.senderId === user.id">
-              <button class="msg-action danger" @click="recallMessage(m.id)">撤回</button>
+            <!-- 撤回按钮：自己的消息且在2分钟内 -->
+            <div class="msg-actions" v-if="m.senderId === user.id && canRecall(m)">
+              <button class="msg-action danger" @click="recallMessage(m)">撤回</button>
             </div>
           </div>
         </div>
