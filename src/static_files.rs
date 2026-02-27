@@ -11,8 +11,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 @keyframes glitch{0%,100%{text-shadow:-2px 0 var(--accent2),2px 0 var(--accent)}25%{text-shadow:2px 0 var(--accent2),-2px 0 var(--accent)}50%{text-shadow:-1px 0 var(--accent2),1px 0 var(--accent)}75%{text-shadow:1px 0 var(--accent2),-1px 0 var(--accent)}}
 .glitch{animation:glitch .3s infinite}
 .scanlines::before{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.06),rgba(0,0,0,.06) 1px,transparent 1px,transparent 2px);pointer-events:none;z-index:9999}
-@keyframes blink{0%,50%{border-color:var(--accent)}51%,100%{border-color:transparent}}
-.typewriter{border-right:2px solid var(--accent);animation:blink 1s infinite}
 .container{width:100%;max-width:540px;margin:0 auto;padding:12px;min-height:100vh;min-height:100dvh}
 .hidden{display:none!important}
 .logo{font-size:clamp(18px,5vw,24px);font-weight:300;letter-spacing:clamp(4px,2vw,8px);text-align:center;padding:clamp(24px,8vw,40px) 0 clamp(16px,4vw,24px);color:var(--accent)}
@@ -135,7 +133,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div class="card">
 <input class="input" id="loginUid" placeholder="UID" autocapitalize="characters" style="margin-bottom:8px">
 <input class="input" type="password" id="loginPwd" placeholder="密码" style="margin-bottom:8px">
-<button class="btn full" onclick="login()">进入</button>
+<button class="btn full" id="loginBtn">进入</button>
 <div class="err" id="loginErr"></div>
 </div>
 </div>
@@ -145,44 +143,44 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 
 <div id="channelView">
 <div class="card">
-<input class="input" id="cipherInput" placeholder="输入频道名进入..." autocapitalize="off" onkeydown="if(event.key==='Enter')enterChannel()">
-<button class="btn full" onclick="enterChannel()" style="margin-top:8px">进入频道</button>
+<input class="input" id="cipherInput" placeholder="输入频道名进入..." autocapitalize="off">
+<button class="btn full" id="enterChannelBtn" style="margin-top:8px">进入频道</button>
 <div class="err" id="cipherErr"></div>
 </div>
 <div id="myChannels"></div>
-<div class="card hidden" id="adminEntry"><button class="btn full" onclick="showAdmin()">管理面板</button></div>
+<div class="card hidden" id="adminEntry"><button class="btn full" id="showAdminBtn">管理面板</button></div>
 </div>
 
 <div id="chatView" class="hidden">
 <div class="chat-wrap">
 <div class="chat-header">
-<button class="chat-back" onclick="leaveChat()">←</button>
+<button class="chat-back" id="leaveChatBtn">←</button>
 <h2 id="chatTitle">聊天</h2>
 <div style="width:30px"></div>
 </div>
 <div class="chat-msgs" id="msgs"></div>
 <div class="chat-input">
-<textarea id="msgInput" rows="1" placeholder="消息..." onkeydown="handleKey(event)"></textarea>
+<textarea id="msgInput" rows="1" placeholder="消息..."></textarea>
 <div class="chat-actions">
-<label class="chat-action-btn" title="上传图片" id="imageUploadBtn">
-<input type="file" accept="image/*" id="imageInput" style="display:none" onchange="uploadImage(event)">
+<label class="chat-action-btn" title="上传图片">
+<input type="file" accept="image/*" id="imageInput" style="display:none">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
 </label>
-<label class="chat-action-btn" title="上传文件" id="fileUploadBtn">
-<input type="file" accept=".txt" id="fileInput" style="display:none" onchange="uploadFile(event)">
+<label class="chat-action-btn" title="上传文件">
+<input type="file" accept=".txt" id="fileInput" style="display:none">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3-3 3 3"/></svg>
 </label>
 </div>
-<button class="send-btn" onclick="send()"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
+<button class="send-btn" id="sendBtn"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
 </div>
 </div>
 </div>
 
 <div id="adminView" class="hidden">
 <div class="admin-tabs">
-<div class="admin-tab on" onclick="adminTab('users')">用户</div>
-<div class="admin-tab" onclick="adminTab('groups')">频道</div>
-<div class="admin-tab" onclick="adminTab('ips')">IP</div>
+<div class="admin-tab on" data-tab="users">用户</div>
+<div class="admin-tab" data-tab="groups">频道</div>
+<div class="admin-tab" data-tab="ips">IP</div>
 </div>
 
 <div id="usersSection" class="admin-section on">
@@ -192,7 +190,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <input class="input" id="newUid" placeholder="UID (留空自动生成)" autocapitalize="characters">
 <input class="input" id="newNick" placeholder="昵称">
 <input class="input" id="newPwd" placeholder="密码 (6位+)">
-<button class="btn full" onclick="createUser()">创建</button>
+<button class="btn full" id="createUserBtn">创建</button>
 </div>
 <div id="userRes"></div>
 </div>
@@ -204,7 +202,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">创建频道</h3>
 <div class="admin-form">
 <input class="input" id="newChan" placeholder="频道名 (即暗号)">
-<button class="btn full" onclick="createChannel()">创建</button>
+<button class="btn full" id="createChannelBtn">创建</button>
 </div>
 <div id="chanRes"></div>
 </div>
@@ -218,7 +216,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 </div>
 
-<button class="btn full" onclick="showChannel()" style="margin-top:12px">返回频道</button>
+<button class="btn full" id="showChannelBtn" style="margin-top:12px">返回频道</button>
 </div>
 </div>
 
@@ -232,43 +230,38 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 </div>
 <div id="menuActions"></div>
-<button class="user-menu-item" onclick="closeUserMenu()">关闭</button>
+<button class="user-menu-item" id="closeUserMenuBtn">关闭</button>
 </div>
 
-<div class="modal-overlay hidden" id="permModal" onclick="if(event.target===this)closePermModal()">
+<div class="modal-overlay hidden" id="permModal">
 <div class="modal">
 <div class="modal-header">
 <h3>管理用户权限</h3>
-<button class="modal-close" onclick="closePermModal()">×</button>
+<button class="modal-close" id="closePermModalBtn">×</button>
 </div>
 <p style="font-size:12px;color:var(--muted);margin-bottom:8px">用户: <span id="permUserName" style="color:var(--accent)"></span></p>
 <p style="font-size:11px;color:var(--muted);margin-bottom:12px">提示: 勾选权限后点击保存即可授权，取消勾选可撤销权限</p>
 <div class="permission-grid" id="permGrid"></div>
-<button class="btn full success" style="margin-top:12px" onclick="savePermissions()">保存权限</button>
+<button class="btn full success" style="margin-top:12px" id="savePermsBtn">保存权限</button>
 </div>
 </div>
 
-<div class="modal-overlay hidden" id="muteModal" onclick="if(event.target===this)closeMuteModal()">
+<div class="modal-overlay hidden" id="muteModal">
 <div class="modal">
 <div class="modal-header">
 <h3>禁言用户</h3>
-<button class="modal-close" onclick="closeMuteModal()">×</button>
+<button class="modal-close" id="closeMuteModalBtn">×</button>
 </div>
 <p style="font-size:12px;color:var(--muted);margin-bottom:12px">用户: <span id="muteUserName" style="color:var(--accent)"></span></p>
-<div class="mute-options">
-<div class="mute-option" onclick="selectMuteDuration(5)">5分钟</div>
-<div class="mute-option" onclick="selectMuteDuration(30)">30分钟</div>
-<div class="mute-option" onclick="selectMuteDuration(60)">1小时</div>
-<div class="mute-option" onclick="selectMuteDuration(360)">6小时</div>
-<div class="mute-option" onclick="selectMuteDuration(1440)">1天</div>
-</div>
-<button class="btn full warn" style="margin-top:12px" onclick="confirmMute()">确认禁言</button>
+<div class="mute-options" id="muteOptions"></div>
+<button class="btn full warn" style="margin-top:12px" id="confirmMuteBtn">确认禁言</button>
 </div>
 </div>
 
 <div class="upload-progress hidden" id="uploadProgress"><span class="loading-spinner"></span>上传中...</div>
 
 <script>
+(function(){
 let token="",user=null,ws=null,groupId=null,lastSend=0;
 let menuTargetUser=null;
 let selectedMuteDuration=30;
@@ -277,70 +270,92 @@ let userPermissions={};
 let onlineUsers=new Set();
 const API=location.origin;
 
-// WebSocket 重连机制
 let wsReconnectAttempts=0;
 let wsMaxReconnectAttempts=10;
 let wsReconnectDelay=1000;
 let wsHeartbeatInterval=null;
 let wsLastPong=0;
 
-function debounce(fn,delay){let t;return function(...args){clearTimeout(t);t=setTimeout(()=>fn.apply(this,args),delay)}}
-function throttle(fn,delay){let last=0;return function(...args){const now=Date.now();if(now-last>=delay){last=now;fn.apply(this,args)}}}
+function $(id){return document.getElementById(id)}
+
+function esc(t){const d=document.createElement("div");d.textContent=t;return d.innerHTML}
+function formatTime(t){return new Date(t).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}
+function formatFileSize(b){if(b<1024)return b+"B";if(b<1024*1024)return(b/1024).toFixed(1)+"KB";return(b/1024/1024).toFixed(1)+"MB"}
 
 function typeWriter(el,text,i){if(i<text.length){el.textContent=text.substring(0,i+1);setTimeout(()=>typeWriter(el,text,i+1),100)}}
-function startLogo(){typeWriter(document.getElementById("logoText"),"ARCANUM",0);typeWriter(document.getElementById("logoText2"),"ARCANUM",0)}
 
 async function api(path,opts={}){const r=await fetch(API+path,{...opts,headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json",...opts.headers}});const d=await r.json();if(d.error&&(d.error.includes("封禁")||d.error.includes("踢出")||d.error.includes("未登录"))){localStorage.clear();location.reload()}return d}
 
 async function login(){
-const uid=document.getElementById("loginUid").value.trim().toUpperCase();
-const pwd=document.getElementById("loginPwd").value;
-if(!uid||!pwd)return;
+const uid=$("loginUid").value.trim().toUpperCase();
+const pwd=$("loginPwd").value;
+const errEl=$("loginErr");
+const btn=$("loginBtn");
+
+if(!uid){errEl.textContent="请输入UID";return}
+if(!pwd){errEl.textContent="请输入密码";return}
+
+btn.disabled=true;
+btn.textContent="登录中...";
+errEl.textContent="";
+
 try{
 const r=await fetch(API+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({uid,password:pwd})});
 const d=await r.json();
-if(d.success){token=d.data.token;user=d.data.user;localStorage.setItem("t",token);localStorage.setItem("u",JSON.stringify(user));showMain()}
-else document.getElementById("loginErr").textContent=d.error;
-}catch(e){document.getElementById("loginErr").textContent="网络错误"}
+if(d.success){
+token=d.data.token;
+user=d.data.user;
+localStorage.setItem("t",token);
+localStorage.setItem("u",JSON.stringify(user));
+showMain();
+}else{
+errEl.textContent=d.error||"登录失败";
+}
+}catch(e){
+errEl.textContent="网络错误: "+e.message;
+}finally{
+btn.disabled=false;
+btn.textContent="进入";
+}
 }
 
 function showMain(){
-document.getElementById("loginPage").classList.add("hidden");
-document.getElementById("mainPage").classList.remove("hidden");
-if(user.role==="admin"||user.permissions&&user.permissions.length>0){
-document.getElementById("adminEntry").classList.remove("hidden");
+$("loginPage").classList.add("hidden");
+$("mainPage").classList.remove("hidden");
+if(user.role==="admin"||(user.permissions&&user.permissions.length>0)){
+$("adminEntry").classList.remove("hidden");
 }
-connectWebSocket();loadMyChannels();
-}
-
-async function enterChannel(){
-const name=document.getElementById("cipherInput").value.trim();
-if(!name){document.getElementById("cipherErr").textContent="请输入频道名";return}
-try{
-const d=await api("/api/groups/enter",{method:"POST",body:JSON.stringify({name})});
-if(d.success){groupId=d.data.id;document.getElementById("cipherErr").textContent="";document.getElementById("cipherInput").value="";showChat()}
-else{document.getElementById("cipherErr").textContent=d.error||"频道不存在"}
-}catch(e){document.getElementById("cipherErr").textContent="网络错误"}
+connectWebSocket();
+loadMyChannels();
 }
 
 async function loadMyChannels(){
 try{
 const d=await api("/api/groups");
-const el=document.getElementById("myChannels");
-if(d.success){el.innerHTML=d.data.length?d.data.map(g=>"<div class=\"channel-card\" onclick=\"joinChannel('"+g.id+"')\"><h3>"+esc(g.name)+"</h3><p>点击进入</p></div>").join(""):"<div class=\"empty\">暂无频道，输入频道名进入</div>"}
+const el=$("myChannels");
+if(d.success){el.innerHTML=d.data.length?d.data.map(g=>'<div class="channel-card" data-gid="'+g.id+'"><h3>'+esc(g.name)+'</h3><p>点击进入</p></div>').join(""):'<div class="empty">暂无频道，输入频道名进入</div>'}
 }catch(e){}
 }
 
-function joinChannel(id){groupId=id;showChat()}
-function showChat(){document.getElementById("channelView").classList.add("hidden");document.getElementById("chatView").classList.remove("hidden");document.getElementById("adminView").classList.add("hidden");loadMsgs()}
-function leaveChat(){groupId=null;document.getElementById("channelView").classList.remove("hidden");document.getElementById("chatView").classList.add("hidden");loadMyChannels()}
+function showChat(){$("channelView").classList.add("hidden");$("chatView").classList.remove("hidden");$("adminView").classList.add("hidden");loadMsgs()}
+function leaveChat(){groupId=null;$("channelView").classList.remove("hidden");$("chatView").classList.add("hidden");loadMyChannels()}
+
+async function enterChannel(){
+const name=$("cipherInput").value.trim();
+if(!name){$("cipherErr").textContent="请输入频道名";return}
+try{
+const d=await api("/api/groups/enter",{method:"POST",body:JSON.stringify({name})});
+if(d.success){groupId=d.data.id;$("cipherErr").textContent="";$("cipherInput").value="";showChat()}
+else{$("cipherErr").textContent=d.error||"频道不存在"}
+}catch(e){$("cipherErr").textContent="网络错误"}
+}
 
 async function loadMsgs(){
 if(!groupId)return;
 try{
 const d=await api("/api/messages/group/"+groupId);
 if(d.success){
-const el=document.getElementById("msgs");
+const el=$("msgs");
 el.innerHTML=d.data.map(m=>renderMessage(m)).join("");
 el.scrollTop=el.scrollHeight;
 }
@@ -350,34 +365,33 @@ el.scrollTop=el.scrollHeight;
 function renderMessage(m){
 const isMe=m.senderId===user.id;
 const isOnline=onlineUsers.has(m.senderId);
-const avatarHtml=m.senderAvatar?"<img src=\""+m.senderAvatar+"\" alt=\"\">":m.senderNickname.charAt(0).toUpperCase();
-const onlineDot="<span class=\"online-dot "+(isOnline?"on":"off")+"\"></span>";
+const avatarHtml=m.senderAvatar?'<img src="'+m.senderAvatar+'" alt="">':m.senderNickname.charAt(0).toUpperCase();
+const onlineDot='<span class="online-dot '+(isOnline?"on":"off")+'"></span>';
 let contentHtml="";
 if(m.msgType==="image"){
-contentHtml="<img class=\"msg-image\" src=\""+m.content+"\" onclick=\"viewImage('"+m.content+"')\" loading=\"lazy\">";
+contentHtml='<img class="msg-image" src="'+m.content+'" onclick="window.open(\''+m.content+'\',\'_blank\')" loading="lazy">';
 }
 else if(m.msgType==="file"){
 const size=formatFileSize(m.fileSize);
-contentHtml="<div class=\"msg-file\"><div class=\"msg-file-icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"#000\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/></svg></div><div class=\"msg-file-info\"><div class=\"msg-file-name\">"+esc(m.fileName||"文件")+"</div><div class=\"msg-file-size\">"+size+"</div></div></div>";
+contentHtml='<div class="msg-file"><div class="msg-file-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div class="msg-file-info"><div class="msg-file-name">'+esc(m.fileName||"文件")+'</div><div class="msg-file-size">'+size+'</div></div></div>';
 }
 else{
 contentHtml=esc(m.content);
 }
-return"<div class=\"msg-row"+(isMe?" me":"")+"\"><div class=\"msg-avatar\" onclick=\"showUserMenu(event,'"+m.senderId+"','"+esc(m.senderNickname)+"')\">"+avatarHtml+onlineDot+"</div><div class=\"msg-bubble "+(isMe?"out":"in")+"\"><div class=\"msg-nick\">"+esc(m.senderNickname)+"</div>"+contentHtml+"<div class=\"msg-time\">"+formatTime(m.createdAt)+"</div></div></div>";
+return'<div class="msg-row'+(isMe?" me":"")+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'</div></div></div>';
 }
 
-const send=throttle(function(){
+function send(){
 const now=Date.now();if(now-lastSend<300)return;lastSend=now;
-const input=document.getElementById("msgInput");const content=input.value.trim();
-if(!content||!ws)return;if(content.length>5000){alert("消息太长");return}
+const input=$("msgInput");const content=input.value.trim();
+if(!content||!ws)return;
+if(content.length>5000){alert("消息太长");return}
 ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content}}));
 input.value="";input.style.height="auto";
-},300);
+}
 
-function handleKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}}
-
-function showUploadProgress(){document.getElementById("uploadProgress").classList.remove("hidden")}
-function hideUploadProgress(){document.getElementById("uploadProgress").classList.add("hidden")}
+function showUploadProgress(){$("uploadProgress").classList.remove("hidden")}
+function hideUploadProgress(){$("uploadProgress").classList.add("hidden")}
 
 async function uploadImage(e){
 const file=e.target.files[0];if(!file)return;
@@ -413,7 +427,6 @@ finally{hideUploadProgress()}
 e.target.value="";
 }
 
-// WebSocket 连接与重连
 function connectWebSocket(){
 const p=location.protocol==="https:"?"wss:":"ws:";
 const wsUrl=p+"//"+location.host+"/ws?token="+token;
@@ -430,7 +443,6 @@ scheduleReconnect();
 }
 
 function onWsOpen(){
-console.log("WebSocket已连接");
 wsReconnectAttempts=0;
 wsReconnectDelay=1000;
 updateStatus("在线","on");
@@ -438,7 +450,6 @@ startHeartbeat();
 }
 
 function onWsClose(event){
-console.log("WebSocket已断开:",event.code,event.reason);
 stopHeartbeat();
 updateStatus("离线","");
 if(event.code!==1000&&event.code!==1001){
@@ -447,7 +458,6 @@ scheduleReconnect();
 }
 
 function onWsError(error){
-console.error("WebSocket错误:",error);
 stopHeartbeat();
 }
 
@@ -462,7 +472,7 @@ if(m.data.senderId){
 onlineUsers.add(m.data.senderId);
 }
 if(m.data.groupId===groupId){
-const el=document.getElementById("msgs");
+const el=$("msgs");
 el.innerHTML+=renderMessage(m.data);
 el.scrollTop=el.scrollHeight;
 }
@@ -471,13 +481,11 @@ el.scrollTop=el.scrollHeight;
 
 function scheduleReconnect(){
 if(wsReconnectAttempts>=wsMaxReconnectAttempts){
-console.log("达到最大重连次数，停止重连");
 updateStatus("连接失败","");
 return;
 }
 wsReconnectAttempts++;
 const delay=Math.min(wsReconnectDelay*Math.pow(2,wsReconnectAttempts-1),30000);
-console.log("将在"+delay+"ms后重连，第"+wsReconnectAttempts+"次");
 updateStatus("重连中("+wsReconnectAttempts+")","reconnecting");
 setTimeout(()=>{
 if(!ws||ws.readyState===WebSocket.CLOSED){
@@ -492,7 +500,6 @@ wsLastPong=Date.now();
 wsHeartbeatInterval=setInterval(()=>{
 if(ws&&ws.readyState===WebSocket.OPEN){
 if(Date.now()-wsLastPong>60000){
-console.log("心跳超时，重连");
 ws.close();
 return;
 }
@@ -509,139 +516,103 @@ wsHeartbeatInterval=null;
 }
 
 function updateStatus(text,cls){
-const status=document.getElementById("status");
+const status=$("status");
 status.textContent=text;
 status.className="status";
 if(cls)status.classList.add(cls);
 }
 
 function showAdmin(){
-document.getElementById("channelView").classList.add("hidden");
-document.getElementById("chatView").classList.add("hidden");
-document.getElementById("adminView").classList.remove("hidden");
+$("channelView").classList.add("hidden");
+$("chatView").classList.add("hidden");
+$("adminView").classList.remove("hidden");
 checkAdminPermissions();
 loadUsers();loadGroups();loadIps();loadPermissions();
 }
-function showChannel(){document.getElementById("channelView").classList.remove("hidden");document.getElementById("chatView").classList.add("hidden");document.getElementById("adminView").classList.add("hidden")}
+function showChannel(){$("channelView").classList.remove("hidden");$("chatView").classList.add("hidden");$("adminView").classList.add("hidden")}
+
 function adminTab(name){
 document.querySelectorAll(".admin-tab").forEach(t=>t.classList.remove("on"));
 document.querySelectorAll(".admin-section").forEach(s=>s.classList.remove("on"));
 event.target.classList.add("on");
-document.getElementById(name+"Section").classList.add("on");
+$(name+"Section").classList.add("on");
 }
 
 function checkAdminPermissions(){
 const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
-document.getElementById("createUserCard").classList.toggle("hidden",!hasPerm("user_create"));
-document.getElementById("createGroupCard").classList.toggle("hidden",!hasPerm("group_create"));
+$("createUserCard").classList.toggle("hidden",!hasPerm("user_create"));
+$("createGroupCard").classList.toggle("hidden",!hasPerm("group_create"));
 }
 
 async function createUser(){
-const uid=document.getElementById("newUid").value.trim().toUpperCase();
-const nick=document.getElementById("newNick").value.trim();
-const pwd=document.getElementById("newPwd").value;
-if(!nick||pwd.length<6){document.getElementById("userRes").innerHTML="<div class=\"err\">请填写昵称和密码(6位+)</div>";return}
+const uid=$("newUid").value.trim().toUpperCase();
+const nick=$("newNick").value.trim();
+const pwd=$("newPwd").value;
+if(!nick||pwd.length<6){$("userRes").innerHTML='<div class="err">请填写昵称和密码(6位+)</div>';return}
 try{
 const body={nickname:nick,password:pwd};if(uid)body.uid=uid;
 const d=await api("/api/admin/users",{method:"POST",body:JSON.stringify(body)});
 if(d.success){
-document.getElementById("userRes").innerHTML="<div class=\"success\">创建成功</div><div style=\"font-size:12px;margin-top:8px\">UID: "+d.data.uid+"<br>昵称: "+d.data.nickname+"<br>密码: "+d.data.password+"</div>";
-document.getElementById("newUid").value="";document.getElementById("newNick").value="";document.getElementById("newPwd").value="";loadUsers();
-}else{document.getElementById("userRes").innerHTML="<div class=\"err\">"+d.error+"</div>"}
-}catch(e){document.getElementById("userRes").innerHTML="<div class=\"err\">网络错误</div>"}
+$("userRes").innerHTML='<div class="success">创建成功</div><div style="font-size:12px;margin-top:8px">UID: '+d.data.uid+'<br>昵称: '+d.data.nickname+'<br>密码: '+d.data.password+'</div>';
+$("newUid").value="";$("newNick").value="";$("newPwd").value="";loadUsers();
+}else{$("userRes").innerHTML='<div class="err">'+d.error+'</div>'}
+}catch(e){$("userRes").innerHTML='<div class="err">网络错误</div>'}
 }
 
 async function loadUsers(){
 try{
 const d=await api("/api/admin/users");
-const el=document.getElementById("userList");
+const el=$("userList");
 if(d.success){
 const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
 el.innerHTML=d.data.length?d.data.map(u=>{
 userPermissions[u.uid]=u.permissions||[];
 if(u.online)onlineUsers.add(u.id);
-let badges="<span class=\"item-badge "+(u.online?"online":"")+"\">"+(u.online?"在线":"离线")+"</span>";
-if(u.role==="admin")badges="<span class=\"item-badge admin\">管理员</span>"+badges;
-if(u.status==="banned")badges="<span class=\"item-badge banned\">已封禁</span>"+badges;
-if(u.mutedUntil&&new Date(u.mutedUntil)>new Date())badges+="<span class=\"item-badge muted\">禁言中</span>";
+let badges='<span class="item-badge '+(u.online?"online":"")+'">'+(u.online?"在线":"离线")+'</span>';
+if(u.role==="admin")badges='<span class="item-badge admin">管理员</span>'+badges;
+if(u.status==="banned")badges='<span class="item-badge banned">已封禁</span>'+badges;
+if(u.mutedUntil&&new Date(u.mutedUntil)>new Date())badges+='<span class="item-badge muted">禁言中</span>';
 let actions="";
 if(u.role!=="admin"){
-if(hasPerm("user_ban"))actions+=(u.status==="banned"?"<button class=\"btn sm\" onclick=\"unbanUser('"+u.uid+"')\">解封</button>":"<button class=\"btn sm warn\" onclick=\"banUser('"+u.uid+"')\">封禁</button>");
-if(hasPerm("user_mute"))actions+="<button class=\"btn sm warn\" onclick=\"muteUser('"+u.uid+"','"+esc(u.nickname)+"')\">禁言</button>";
-if(hasPerm("user_kick"))actions+="<button class=\"btn sm\" onclick=\"kickUser('"+u.uid+"')\">踢出</button>";
-if(hasPerm("user_kick"))actions+="<button class=\"btn sm danger\" onclick=\"deleteUser('"+u.uid+"')\">删除</button>";
-if(hasPerm("permission_grant"))actions+="<button class=\"btn sm success\" onclick=\"openPermModal('"+u.uid+"','"+esc(u.nickname)+"')\">权限</button>";
+if(hasPerm("user_ban"))actions+=(u.status==="banned"?'<button class="btn sm" data-act="unban" data-uid="'+u.uid+'">解封</button>':'<button class="btn sm warn" data-act="ban" data-uid="'+u.uid+'">封禁</button>');
+if(hasPerm("user_mute"))actions+='<button class="btn sm warn" data-act="mute" data-uid="'+u.uid+'" data-nick="'+esc(u.nickname)+'">禁言</button>';
+if(hasPerm("user_kick"))actions+='<button class="btn sm" data-act="kick" data-uid="'+u.uid+'">踢出</button>';
+if(hasPerm("user_kick"))actions+='<button class="btn sm danger" data-act="delete" data-uid="'+u.uid+'">删除</button>';
+if(hasPerm("permission_grant"))actions+='<button class="btn sm success" data-act="perm" data-uid="'+u.uid+'" data-nick="'+esc(u.nickname)+'">权限</button>';
 }
-const permTags=(u.permissions||[]).length?"<div class=\"permission-list\">"+(u.permissions||[]).slice(0,5).map(p=>"<span class=\"permission-tag\">"+p+"</span>").join("")+(u.permissions.length>5?"<span class=\"permission-tag\">+"+(u.permissions.length-5)+"</span>":"")+"</div>":"";
-return"<div class=\"item-card\"><div class=\"item-header\"><span class=\"item-title\">"+esc(u.nickname)+"</span>"+badges+"</div><div class=\"item-info\">UID: "+u.uid+(u.lastIp?" | IP: "+u.lastIp:"")+"</div>"+permTags+(actions?"<div class=\"item-actions\">"+actions+"</div>":"")+"</div>";
-}).join(""):"<div class=\"empty\">暂无用户</div>"
+const permTags=(u.permissions||[]).length?'<div class="permission-list">'+(u.permissions||[]).slice(0,5).map(p=>'<span class="permission-tag">'+p+'</span>').join("")+(u.permissions.length>5?'<span class="permission-tag">+'+(u.permissions.length-5)+'</span>':"")+"</div>":"";
+return'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(u.nickname)+'</span>'+badges+'</div><div class="item-info">UID: '+u.uid+(u.lastIp?" | IP: "+u.lastIp:"")+'</div>'+permTags+(actions?'<div class="item-actions">'+actions+'</div>':"")+"</div>";
+}).join(""):'<div class="empty">暂无用户</div>'
 }
-}catch(e){}
-}
-
-async function banUser(uid){if(!confirm("确定封禁该用户?"))return;try{await api("/api/admin/users/"+uid+"/ban",{method:"PUT"});loadUsers()}catch(e){}}
-async function unbanUser(uid){try{await api("/api/admin/users/"+uid+"/unban",{method:"PUT"});loadUsers()}catch(e){}}
-async function kickUser(uid){try{await api("/api/admin/users/"+uid+"/kick",{method:"PUT"});alert("已踢出")}catch(e){}}
-async function deleteUser(uid){if(!confirm("确定删除该用户?"))return;try{await api("/api/admin/users/"+uid,{method:"DELETE"});loadUsers()}catch(e){}}
-
-function muteUser(uid,nick){
-menuTargetUser={uid,nick};
-document.getElementById("muteUserName").textContent=nick;
-document.getElementById("muteModal").classList.remove("hidden");
-}
-function selectMuteDuration(mins){
-selectedMuteDuration=mins;
-document.querySelectorAll(".mute-option").forEach(el=>el.classList.remove("on"));
-event.target.classList.add("on");
-}
-async function confirmMute(){
-if(!menuTargetUser)return;
-try{
-await api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})});
-closeMuteModal();loadUsers();
-}catch(e){}
-}
-function closeMuteModal(){document.getElementById("muteModal").classList.add("hidden");menuTargetUser=null}
-
-async function createChannel(){
-const name=document.getElementById("newChan").value.trim();if(!name)return;
-try{
-const d=await api("/api/groups",{method:"POST",body:JSON.stringify({name})});
-if(d.success){document.getElementById("chanRes").innerHTML="<div class=\"success\">创建成功: "+name+"</div>";document.getElementById("newChan").value="";loadGroups()}
-else{document.getElementById("chanRes").innerHTML="<div class=\"err\">"+d.error+"</div>"}
 }catch(e){}
 }
 
 async function loadGroups(){
 try{
 const d=await api("/api/admin/groups");
-const el=document.getElementById("groupList");
+const el=$("groupList");
 if(d.success){
 const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
 el.innerHTML=d.data.length?d.data.map(g=>{
 let actions="";
-if(hasPerm("message_delete"))actions+="<button class=\"btn sm\" onclick=\"clearGroup('"+g.id+"')\">清空</button>";
-if(hasPerm("group_delete"))actions+="<button class=\"btn sm danger\" onclick=\"deleteGroup('"+g.id+"')\">删除</button>";
-return"<div class=\"item-card\"><div class=\"item-header\"><span class=\"item-title\">"+esc(g.name)+"</span><span class=\"item-badge\">"+g.memberCount+"人</span></div><div class=\"item-info\">暗号: "+esc(g.name)+"</div>"+(actions?"<div class=\"item-actions\">"+actions+"</div>":"")+"</div>";
-}).join(""):"<div class=\"empty\">暂无频道</div>"
+if(hasPerm("message_delete"))actions+='<button class="btn sm" data-act="clearGroup" data-gid="'+g.id+'">清空</button>';
+if(hasPerm("group_delete"))actions+='<button class="btn sm danger" data-act="deleteGroup" data-gid="'+g.id+'">删除</button>';
+return'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(g.name)+'</span><span class="item-badge">'+g.memberCount+'人</span></div><div class="item-info">暗号: '+esc(g.name)+'</div>'+(actions?'<div class="item-actions">'+actions+'</div>':"")+"</div>";
+}).join(""):'<div class="empty">暂无频道</div>'
 }
 }catch(e){}
 }
-
-async function clearGroup(id){if(!confirm("确定清空该频道所有消息?"))return;try{await api("/api/messages/group/"+id,{method:"DELETE"});alert("已清空")}catch(e){}}
-async function deleteGroup(id){if(!confirm("确定删除该频道?"))return;try{await api("/api/admin/groups/"+id,{method:"DELETE"});loadGroups()}catch(e){}}
 
 async function loadIps(){
 try{
 const d=await api("/api/admin/ips");
-const el=document.getElementById("ipList");
-if(d.success){el.innerHTML=d.data.length?d.data.map(ip=>"<div class=\"item-card\"><div class=\"item-header\"><span class=\"item-title\">"+ip.ip+"</span><button class=\"btn sm\" onclick=\"unbanIp('"+ip.ip+"')\">解封</button></div><div class=\"item-info\">"+(ip.reason||"")+" | "+ip.createdAt+"</div></div>").join(""):"<div class=\"empty\">暂无封禁IP</div>"}
+const el=$("ipList");
+if(d.success){el.innerHTML=d.data.length?d.data.map(ip=>'<div class="item-card"><div class="item-header"><span class="item-title">'+ip.ip+'</span><button class="btn sm" data-act="unbanIp" data-ip="'+ip.ip+'">解封</button></div><div class="item-info">'+(ip.reason||"")+" | "+ip.createdAt+'</div></div>').join(""):'<div class="empty">暂无封禁IP</div>'}
 }catch(e){}
 }
-async function unbanIp(ip){try{await api("/api/admin/ips/"+ip,{method:"DELETE"});loadIps()}catch(e){}}
 
 async function loadPermissions(){
 try{
@@ -650,34 +621,30 @@ if(d.success){allPermissions=d.data}
 }catch(e){}
 }
 
-// 用户菜单 - 显示在线状态
-async function showUserMenu(e,userId,nick){
+async function showUserMenu(e,sid,nick){
 e.stopPropagation();
-const menu=document.getElementById("userMenu");
-const isSelf=userId===user.id;
+const menu=$("userMenu");
+const isSelf=sid===user.id;
 const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
 
-// 获取用户信息
 let userInfo=null;
 try{
-const d=await api("/api/users/"+userId);
+const d=await api("/api/users/"+sid);
 if(d.success)userInfo=d.data;
 }catch(err){}
 
-// 更新头像
-const avatarEl=document.getElementById("menuAvatar");
+const avatarEl=$("menuAvatar");
 if(userInfo&&userInfo.avatar){
-avatarEl.innerHTML="<img src=\""+userInfo.avatar+"\" alt=\"\">";
+avatarEl.innerHTML='<img src="'+userInfo.avatar+'" alt="">';
 }else{
 avatarEl.textContent=nick.charAt(0).toUpperCase();
 }
 
-document.getElementById("menuUserName").textContent=nick;
-document.getElementById("menuUserInfo").textContent="UID: "+(userInfo?userInfo.uid:userId);
+$("menuUserName").textContent=nick;
+$("menuUserInfo").textContent="UID: "+(userInfo?userInfo.uid:sid);
 
-// 更新在线状态
-const statusEl=document.getElementById("menuUserStatus");
+const statusEl=$("menuUserStatus");
 if(userInfo){
 if(userInfo.status==="banned"){
 statusEl.textContent="已封禁";
@@ -696,77 +663,43 @@ statusEl.className="user-menu-status offline";
 statusEl.textContent="";
 }
 
-// 构建操作按钮
 let actionsHtml="";
 if(!isSelf){
-if(hasPerm("user_mute"))actionsHtml+="<button class=\"user-menu-item warn\" onclick=\"menuMute()\">禁言</button>";
-if(hasPerm("user_mute"))actionsHtml+="<button class=\"user-menu-item\" onclick=\"menuUnmute()\">解除禁言</button>";
-if(hasPerm("user_kick"))actionsHtml+="<button class=\"user-menu-item warn\" onclick=\"menuKick()\">踢出</button>";
-if(hasPerm("user_ban"))actionsHtml+="<button class=\"user-menu-item danger\" onclick=\"menuBan()\">封禁</button>";
-if(hasPerm("permission_grant"))actionsHtml+="<button class=\"user-menu-item\" onclick=\"menuGrant()\">管理权限</button>";
+if(hasPerm("user_mute"))actionsHtml+='<button class="user-menu-item warn" data-act="menuMute">禁言</button>';
+if(hasPerm("user_mute"))actionsHtml+='<button class="user-menu-item" data-act="menuUnmute">解除禁言</button>';
+if(hasPerm("user_kick"))actionsHtml+='<button class="user-menu-item warn" data-act="menuKick">踢出</button>';
+if(hasPerm("user_ban"))actionsHtml+='<button class="user-menu-item danger" data-act="menuBan">封禁</button>';
+if(hasPerm("permission_grant"))actionsHtml+='<button class="user-menu-item" data-act="menuGrant">管理权限</button>';
 }
-document.getElementById("menuActions").innerHTML=actionsHtml;
+$("menuActions").innerHTML=actionsHtml;
 
-menuTargetUser={uid:userInfo?userInfo.uid:userId,userId,nick};
+menuTargetUser={uid:userInfo?userInfo.uid:sid,userId:sid,nick};
 menu.style.left=Math.min(e.clientX,window.innerWidth-200)+"px";
 menu.style.top=Math.min(e.clientY,window.innerHeight-300)+"px";
 menu.classList.remove("hidden");
 }
 
-function closeUserMenu(){document.getElementById("userMenu").classList.add("hidden")}
-document.addEventListener("click",closeUserMenu);
-
-async function menuMute(){
-closeUserMenu();
-if(menuTargetUser){
-document.getElementById("muteUserName").textContent=menuTargetUser.nick;
-document.getElementById("muteModal").classList.remove("hidden");
-}
-}
-async function menuUnmute(){
-closeUserMenu();
-if(menuTargetUser){
-try{await api("/api/admin/users/"+menuTargetUser.uid+"/unmute",{method:"PUT"});alert("已解除禁言")}catch(e){}
-}
-}
-async function menuKick(){
-closeUserMenu();
-if(menuTargetUser){
-try{await api("/api/admin/users/"+menuTargetUser.uid+"/kick",{method:"PUT"});alert("已踢出")}catch(e){}
-}
-}
-async function menuBan(){
-closeUserMenu();
-if(menuTargetUser&&confirm("确定封禁该用户?")){
-try{await api("/api/admin/users/"+menuTargetUser.uid+"/ban",{method:"PUT"});alert("已封禁")}catch(e){}
-}
-}
-function menuGrant(){
-closeUserMenu();
-if(menuTargetUser){
-openPermModal(menuTargetUser.uid,menuTargetUser.nick);
-}
-}
+function closeUserMenu(){$("userMenu").classList.add("hidden")}
 
 function openPermModal(uid,nick){
 menuTargetUser={uid,nick};
-document.getElementById("permUserName").textContent=nick;
+$("permUserName").textContent=nick;
 renderPermGrid(uid);
-document.getElementById("permModal").classList.remove("hidden");
+$("permModal").classList.remove("hidden");
 }
 
 function renderPermGrid(uid){
-const grid=document.getElementById("permGrid");
+const grid=$("permGrid");
 const currentPerms=userPermissions[uid]||[];
 grid.innerHTML=allPermissions.map(p=>{
 const checked=currentPerms.includes(p.name)?"checked":"";
-return"<div class=\"permission-item\"><label><input type=\"checkbox\" "+checked+" data-perm=\""+p.name+"\"> "+p.description+"</label></div>";
+return'<div class="permission-item"><label><input type="checkbox" '+checked+' data-perm="'+p.name+'"> '+p.description+'</label></div>';
 }).join("");
 }
 
 async function savePermissions(){
 if(!menuTargetUser)return;
-const checkboxes=document.querySelectorAll("#permGrid input[type=\"checkbox\"]");
+const checkboxes=document.querySelectorAll("#permGrid input[type='checkbox']");
 const permToGrant=[];
 const permToRevoke=[];
 checkboxes.forEach(cb=>{
@@ -774,7 +707,7 @@ const permName=cb.dataset.perm;
 const currentPerms=userPermissions[menuTargetUser.uid]||[];
 if(cb.checked&&!currentPerms.includes(permName)){
 permToGrant.push(permName);
-}else if(!cb.checked&¤tPerms.includes(permName)){
+}else if(!cb.checked&&currentPerms.includes(permName)){
 permToRevoke.push(permName);
 }
 });
@@ -784,23 +717,166 @@ await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"POST",b
 for(const permName of permToRevoke){
 await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"DELETE",body:JSON.stringify({permission_name:permName})});
 }
-closePermModal();
+$("permModal").classList.add("hidden");
 loadUsers();
 }
-function closePermModal(){document.getElementById("permModal").classList.add("hidden")}
 
-function esc(t){const d=document.createElement("div");d.textContent=t;return d.innerHTML}
-function formatTime(t){return new Date(t).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}
-function formatFileSize(b){if(b<1024)return b+"B";if(b<1024*1024)return(b/1024).toFixed(1)+"KB";return(b/1024/1024).toFixed(1)+"MB"}
-function viewImage(src){window.open(src,"_blank")}
+function openMuteModal(uid,nick){
+menuTargetUser={uid,nick};
+$("muteUserName").textContent=nick;
+const durations=[5,30,60,360,1440];
+$("muteOptions").innerHTML=durations.map(d=>'<div class="mute-option" data-duration="'+d+'">'+(d<60?d+"分钟":d===60?"1小时":d===360?"6小时":"1天")+'</div>').join("");
+selectedMuteDuration=30;
+$("muteModal").classList.remove("hidden");
+}
 
-window.onload=()=>{
-startLogo();
+// Event delegation
+document.addEventListener("click",async function(e){
+const t=e.target;
+const act=t.dataset.act;
+
+if(act==="ban"&&confirm("确定封禁该用户?")){
+await api("/api/admin/users/"+t.dataset.uid+"/ban",{method:"PUT"});
+loadUsers();
+}
+if(act==="unban"){
+await api("/api/admin/users/"+t.dataset.uid+"/unban",{method:"PUT"});
+loadUsers();
+}
+if(act==="kick"){
+await api("/api/admin/users/"+t.dataset.uid+"/kick",{method:"PUT"});
+alert("已踢出");
+}
+if(act==="delete"&&confirm("确定删除该用户?")){
+await api("/api/admin/users/"+t.dataset.uid,{method:"DELETE"});
+loadUsers();
+}
+if(act==="mute"){
+openMuteModal(t.dataset.uid,t.dataset.nick);
+}
+if(act==="perm"){
+openPermModal(t.dataset.uid,t.dataset.nick);
+}
+if(act==="clearGroup"&&confirm("确定清空该频道所有消息?")){
+await api("/api/messages/group/"+t.dataset.gid,{method:"DELETE"});
+alert("已清空");
+}
+if(act==="deleteGroup"&&confirm("确定删除该频道?")){
+await api("/api/admin/groups/"+t.dataset.gid,{method:"DELETE"});
+loadGroups();
+}
+if(act==="unbanIp"){
+await api("/api/admin/ips/"+t.dataset.ip,{method:"DELETE"});
+loadIps();
+}
+if(act==="menuMute"){
+closeUserMenu();
+if(menuTargetUser)openMuteModal(menuTargetUser.uid,menuTargetUser.nick);
+}
+if(act==="menuUnmute"){
+closeUserMenu();
+if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/unmute",{method:"PUT"});alert("已解除禁言");}
+}
+if(act==="menuKick"){
+closeUserMenu();
+if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/kick",{method:"PUT"});alert("已踢出");}
+}
+if(act==="menuBan"){
+closeUserMenu();
+if(menuTargetUser&&confirm("确定封禁该用户?")){
+await api("/api/admin/users/"+menuTargetUser.uid+"/ban",{method:"PUT"});
+alert("已封禁");
+}
+}
+if(act==="menuGrant"){
+closeUserMenu();
+if(menuTargetUser)openPermModal(menuTargetUser.uid,menuTargetUser.nick);
+}
+
+// Channel card click
+if(t.closest(".channel-card")){
+const gid=t.closest(".channel-card").dataset.gid;
+if(gid){groupId=gid;showChat();}
+}
+
+// Mute option click
+if(t.classList.contains("mute-option")){
+selectedMuteDuration=parseInt(t.dataset.duration);
+document.querySelectorAll(".mute-option").forEach(el=>el.classList.remove("on"));
+t.classList.add("on");
+}
+
+// Admin tab click
+if(t.classList.contains("admin-tab")){
+adminTab(t.dataset.tab);
+}
+
+// Avatar click in messages
+if(t.closest(".msg-avatar")){
+const av=t.closest(".msg-avatar");
+showUserMenu(e,av.dataset.sid,av.dataset.nick);
+}
+
+// Close user menu on outside click
+if(!$("userMenu").contains(t)&&!t.closest(".msg-avatar")){
+closeUserMenu();
+}
+});
+
+// Initialize
+window.onload=function(){
+typeWriter($("logoText"),"ARCANUM",0);
+typeWriter($("logoText2"),"ARCANUM",0);
+
 const t=localStorage.getItem("t"),u=localStorage.getItem("u");
-if(t&&u){token=t;user=JSON.parse(u);showMain()}
-document.getElementById("loginPwd").onkeydown=e=>{if(e.key==="Enter")login()};
+if(t&&u){
+try{
+token=t;
+user=JSON.parse(u);
+showMain();
+}catch(e){
+localStorage.clear();
+}
+}
+
+// Bind events
+$("loginBtn").onclick=login;
+$("loginPwd").onkeydown=function(e){if(e.key==="Enter")login()};
+$("enterChannelBtn").onclick=enterChannel;
+$("cipherInput").onkeydown=function(e){if(e.key==="Enter")enterChannel()};
+$("leaveChatBtn").onclick=leaveChat;
+$("sendBtn").onclick=send;
+$("msgInput").onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};
+$("msgInput").oninput=function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,80)+"px"};
+$("imageInput").onchange=uploadImage;
+$("fileInput").onchange=uploadFile;
+$("showAdminBtn").onclick=showAdmin;
+$("showChannelBtn").onclick=showChannel;
+$("createUserBtn").onclick=createUser;
+$("createChannelBtn").onclick=function(){
+const name=$("newChan").value.trim();if(!name)return;
+api("/api/groups",{method:"POST",body:JSON.stringify({name})}).then(d=>{
+if(d.success){$("chanRes").innerHTML='<div class="success">创建成功: '+name+'</div>';$("newChan").value="";loadGroups()}
+else{$("chanRes").innerHTML='<div class="err">'+d.error+'</div>'}
+});
 };
-document.getElementById("msgInput").addEventListener("input",function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,80)+"px"});
+$("closeUserMenuBtn").onclick=closeUserMenu;
+$("closePermModalBtn").onclick=function(){$("permModal").classList.add("hidden")};
+$("closeMuteModalBtn").onclick=function(){$("muteModal").classList.add("hidden")};
+$("savePermsBtn").onclick=savePermissions;
+$("confirmMuteBtn").onclick=async function(){
+if(!menuTargetUser)return;
+await api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})});
+$("muteModal").classList.add("hidden");
+loadUsers();
+};
+
+// Close modals on overlay click
+$("permModal").onclick=function(e){if(e.target===this)$("permModal").classList.add("hidden")};
+$("muteModal").onclick=function(e){if(e.target===this)$("muteModal").classList.add("hidden")};
+};
+
+})();
 </script>
 </body>
 </html>
