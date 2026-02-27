@@ -95,6 +95,15 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/messages/file/:id", post(handlers::messages::upload_file))
         .route("/api/mentions", get(handlers::messages::get_mentions))
         .route("/api/mentions/:id/read", post(handlers::messages::mark_mention_read))
+        // 私聊路由
+        .route("/api/direct/:id", post(handlers::direct::send_direct_message))
+        .route("/api/direct/:id", get(handlers::direct::get_direct_messages))
+        .route("/api/conversations", get(handlers::direct::get_conversations))
+        // 好友路由
+        .route("/api/friends", get(handlers::direct::get_friends))
+        .route("/api/friends/requests", get(handlers::direct::get_friend_requests))
+        .route("/api/friends/:id", post(handlers::direct::add_friend))
+        .route("/api/friends/:id/accept", post(handlers::direct::accept_friend))
         // WebSocket
         .route("/ws", get(ws::ws_handler))
         .route("/health", get(handlers::health::health_check))

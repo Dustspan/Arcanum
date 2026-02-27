@@ -92,6 +92,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .forward-item:hover{background:rgba(255,255,255,.05)}
 .forward-item-name{font-size:14px;font-weight:500}
 .forward-item-members{font-size:11px;color:var(--muted);margin-top:2px}
+.conversation-item{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
+.conversation-item:last-child{border-bottom:none}
+.conversation-item:hover{background:rgba(255,255,255,.05)}
+.friend-item{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border)}
+.friend-item:last-child{border-bottom:none}
+.friend-item:hover{background:rgba(255,255,255,.05)}
 .mention{color:var(--accent);font-weight:500;cursor:pointer}
 .mention:hover{text-decoration:underline}
 .mention-badge{position:absolute;top:-4px;right:-4px;background:var(--error);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;min-width:16px;text-align:center}
@@ -178,7 +184,53 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .theme-toggle{position:absolute;top:12px;right:12px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;transition:all .2s}
 .theme-toggle:hover{border-color:var(--accent)}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media(min-width:540px){.container{padding:16px}}
+/* 移动端响应式优化 */
+@media(max-width:480px){
+.container{padding:8px}
+.logo{font-size:18px;letter-spacing:4px;padding:20px 0 16px}
+.card{padding:12px;margin:6px 0}
+.chat-header{padding:8px}
+.chat-header h2{font-size:14px}
+.chat-msgs{padding:8px;gap:8px}
+.msg-avatar{width:32px;height:32px;font-size:12px}
+.msg-bubble{padding:8px 10px;max-width:85%}
+.msg-nick{font-size:11px}
+.msg-time{font-size:9px}
+.chat-input{padding:8px}
+.chat-input textarea{font-size:14px}
+.btn{padding:6px 12px;font-size:12px}
+.input{padding:8px 10px;font-size:14px}
+.modal{padding:12px;max-width:95%;max-height:85%}
+.modal-header h3{font-size:14px}
+.channel-card{padding:10px;margin:6px 0}
+.channel-card h3{font-size:14px}
+.status{font-size:9px;padding:3px 8px}
+.admin-tabs{flex-wrap:wrap}
+.admin-tab{padding:6px 10px;font-size:11px}
+}
+/* 平板适配 */
+@media(min-width:481px) and (max-width:768px){
+.container{max-width:600px}
+.chat-wrap{max-width:600px;margin:0 auto}
+}
+/* 桌面端优化 */
+@media(min-width:769px){
+.container{max-width:800px}
+.chat-wrap{max-width:800px;margin:0 auto}
+.msg-avatar{width:40px;height:40px}
+.msg-bubble{max-width:70%}
+}
+/* 触摸设备优化 */
+@media(hover:none) and (pointer:coarse){
+.btn:active{transform:scale(.97)}
+.channel-card:active{transform:scale(.98)}
+.msg-avatar:active{transform:scale(.95)}
+}
+/* 安全区域适配（刘海屏） */
+@supports(padding:env(safe-area-inset-top)){
+body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.chat-input{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+}
 </style>
 </head>
 <body class="scanlines">
@@ -207,6 +259,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div id="myChannels"></div>
 <div class="card hidden" id="adminEntry"><button class="btn full" id="showAdminBtn">管理面板</button></div>
 <div style="margin-top:12px">
+<button class="btn full" id="conversationsBtn" style="position:relative">💬 私聊<span class="mention-badge hidden" id="dmBadge">0</span></button>
+</div>
+<div style="margin-top:8px">
+<button class="btn full" id="friendsBtn" style="position:relative">👥 好友<span class="mention-badge hidden" id="friendBadge">0</span></button>
+</div>
+<div style="margin-top:8px">
 <button class="btn full" id="mentionsBtn" style="position:relative">🔔 提及<span class="mention-badge hidden" id="mentionBadge">0</span></button>
 </div>
 <div style="margin-top:8px"><button class="btn full" id="settingsBtn">⚙ 个人设置</button></div>
@@ -405,6 +463,46 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <button class="modal-close" id="closeForwardModalBtn">×</button>
 </div>
 <div id="forwardList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
+</div>
+</div>
+
+<div class="modal-overlay hidden" id="conversationsModal">
+<div class="modal">
+<div class="modal-header">
+<h3>私聊</h3>
+<button class="modal-close" id="closeConversationsModalBtn">×</button>
+</div>
+<div id="conversationsList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
+</div>
+</div>
+
+<div class="modal-overlay hidden" id="friendsModal">
+<div class="modal">
+<div class="modal-header">
+<h3>好友</h3>
+<button class="modal-close" id="closeFriendsModalBtn">×</button>
+</div>
+<div style="padding:8px">
+<div class="admin-tabs" style="margin-bottom:8px">
+<button class="admin-tab on" data-tab="friendsList">好友列表</button>
+<button class="admin-tab" data-tab="friendRequests">好友请求</button>
+</div>
+<div id="friendsList"></div>
+<div id="friendRequests" class="hidden"></div>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay hidden" id="directChatModal">
+<div class="modal" style="max-width:400px;height:80vh;display:flex;flex-direction:column">
+<div class="modal-header">
+<h3 id="directChatTitle">私聊</h3>
+<button class="modal-close" id="closeDirectChatModalBtn">×</button>
+</div>
+<div id="directMsgs" style="flex:1;overflow-y:auto;padding:8px;background:#050505"></div>
+<div style="padding:8px;border-top:1px solid var(--border)">
+<textarea id="directInput" rows="1" placeholder="消息..." style="width:100%;padding:8px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;resize:none"></textarea>
+</div>
 </div>
 </div>
 
@@ -1091,6 +1189,155 @@ $("membersModal").classList.remove("hidden");
 }catch(e){}
 }
 
+// 私聊功能
+let currentDmUser=null;
+
+async function showConversations(){
+try{
+const d=await api("/api/conversations");
+if(d.success){
+const el=$("conversationsList");
+if(d.data.length===0){
+el.innerHTML='<div class="empty">暂无私聊</div>';
+}else{
+el.innerHTML=d.data.map(c=>{
+const avatarHtml=c.avatar?'<img src="'+c.avatar+'" alt="">':c.nickname.charAt(0).toUpperCase();
+const unreadBadge=c.unread>0?'<span class="mention-badge">'+c.unread+'</span>':"";
+return'<div class="conversation-item" data-uid="'+c.userId+'" data-nick="'+esc(c.nickname)+'">'+
+'<div class="member-avatar">'+avatarHtml+'</div>'+
+'<div class="member-info">'+
+'<div class="member-nick">'+esc(c.nickname)+unreadBadge+'</div>'+
+'<div class="member-status">'+esc(c.lastMessage)+'</div>'+
+'</div>'+
+'</div>';
+}).join("");
+}
+$("conversationsModal").classList.remove("hidden");
+}
+}catch(e){}
+}
+
+async function openDirectChat(userId,nickname){
+currentDmUser={id:userId,nickname:nickname};
+$("directChatTitle").textContent="与 "+nickname+" 的私聊";
+$("directMsgs").innerHTML="";
+$("conversationsModal").classList.add("hidden");
+$("directChatModal").classList.remove("hidden");
+loadDirectMessages(userId);
+}
+
+async function loadDirectMessages(userId){
+try{
+const d=await api("/api/direct/"+userId);
+if(d.success){
+const el=$("directMsgs");
+el.innerHTML=d.data.map(m=>{
+const isMe=m.senderId===user.id;
+const avatarHtml=m.senderAvatar?'<img src="'+m.senderAvatar+'" alt="">':m.senderNickname.charAt(0).toUpperCase();
+return'<div class="msg-row'+(isMe?" me":"")+'">'+
+'<div class="msg-avatar">'+avatarHtml+'</div>'+
+'<div class="msg-bubble '+(isMe?"out":"in")+'">'+
+'<div class="msg-nick">'+esc(m.senderNickname)+'</div>'+
+esc(m.content)+
+'<div class="msg-time">'+formatTime(m.createdAt)+'</div>'+
+'</div></div>';
+}).join("");
+el.scrollTop=el.scrollHeight;
+}
+}catch(e){}
+}
+
+async function sendDirectMessage(){
+if(!currentDmUser)return;
+const input=$("directInput");
+const content=input.value.trim();
+if(!content)return;
+try{
+const d=await api("/api/direct/"+currentDmUser.id,{method:"POST",body:JSON.stringify({content})});
+if(d.success){
+input.value="";
+loadDirectMessages(currentDmUser.id);
+}
+}catch(e){}
+}
+
+// 好友功能
+async function showFriends(){
+loadFriends();
+loadFriendRequests();
+$("friendsModal").classList.remove("hidden");
+}
+
+async function loadFriends(){
+try{
+const d=await api("/api/friends");
+if(d.success){
+const el=$("friendsList");
+if(d.data.length===0){
+el.innerHTML='<div class="empty">暂无好友</div>';
+}else{
+el.innerHTML=d.data.map(f=>{
+const avatarHtml=f.avatar?'<img src="'+f.avatar+'" alt="">':f.nickname.charAt(0).toUpperCase();
+return'<div class="friend-item" data-uid="'+f.id+'" data-nick="'+esc(f.nickname)+'">'+
+'<div class="member-avatar">'+avatarHtml+'</div>'+
+'<div class="member-info">'+
+'<div class="member-nick">'+esc(f.nickname)+'</div>'+
+'</div>'+
+'<button class="btn sm" onclick="openDirectChat(\''+f.id+'\',\''+esc(f.nickname)+'\')">私聊</button>'+
+'</div>';
+}).join("");
+}
+}
+}catch(e){}
+}
+
+async function loadFriendRequests(){
+try{
+const d=await api("/api/friends/requests");
+if(d.success){
+const el=$("friendRequests");
+if(d.data.length===0){
+el.innerHTML='<div class="empty">暂无好友请求</div>';
+}else{
+el.innerHTML=d.data.map(r=>{
+const avatarHtml=r.avatar?'<img src="'+r.avatar+'" alt="">':r.nickname.charAt(0).toUpperCase();
+return'<div class="friend-item">'+
+'<div class="member-avatar">'+avatarHtml+'</div>'+
+'<div class="member-info">'+
+'<div class="member-nick">'+esc(r.nickname)+'</div>'+
+'</div>'+
+'<button class="btn sm success" onclick="acceptFriend(\''+r.userId+'\')">接受</button>'+
+'</div>';
+}).join("");
+}
+// 更新徽章
+if(d.data.length>0){
+$("friendBadge").textContent=d.data.length;
+$("friendBadge").classList.remove("hidden");
+}
+}
+}catch(e){}
+}
+
+async function acceptFriend(friendId){
+try{
+const d=await api("/api/friends/"+friendId+"/accept",{method:"POST"});
+if(d.success){
+loadFriends();
+loadFriendRequests();
+}
+}catch(e){}
+}
+
+async function addFriendFromMenu(userId){
+try{
+const d=await api("/api/friends/"+userId,{method:"POST"});
+if(d.success){
+alert("好友请求已发送");
+}else{alert(d.error||"添加失败")}
+}catch(e){alert("添加失败")}
+}
+
 // 个人设置
 function showSettings(){
 $("newNickname").value=user.nickname;
@@ -1279,6 +1526,14 @@ if(act==="menuGrant"){closeUserMenu();if(menuTargetUser)openPermModal(menuTarget
 if(t.closest(".channel-card")){const gid=t.closest(".channel-card").dataset.gid;if(gid){groupId=gid;showChat()}}
 if(t.classList.contains("mute-option")){selectedMuteDuration=parseInt(t.dataset.duration);document.querySelectorAll(".mute-option").forEach(el=>el.classList.remove("on"));t.classList.add("on")}
 if(t.classList.contains("admin-tab"))adminTab(t.dataset.tab);
+if(t.closest(".conversation-item")){
+const item=t.closest(".conversation-item");
+openDirectChat(item.dataset.uid,item.dataset.nick);
+}
+if(t.closest(".friend-item")&&!t.classList.contains("btn")){
+const item=t.closest(".friend-item");
+if(item.dataset.uid)openDirectChat(item.dataset.uid,item.dataset.nick);
+}
 if(t.closest(".msg-avatar")){const av=t.closest(".msg-avatar");showUserMenu(e,av.dataset.sid,av.dataset.nick)}
 if(!$("userMenu").contains(t)&&!t.closest(".msg-avatar"))closeUserMenu();
 });
@@ -1340,6 +1595,16 @@ item.classList.remove("unread");
 loadMentions();
 }
 };
+// 私聊和好友
+$("conversationsBtn").onclick=showConversations;
+$("closeConversationsModalBtn").onclick=function(){$("conversationsModal").classList.add("hidden")};
+$("conversationsModal").onclick=function(e){if(e.target===this)$("conversationsModal").classList.add("hidden")};
+$("friendsBtn").onclick=showFriends;
+$("closeFriendsModalBtn").onclick=function(){$("friendsModal").classList.add("hidden")};
+$("friendsModal").onclick=function(e){if(e.target===this)$("friendsModal").classList.add("hidden")};
+$("closeDirectChatModalBtn").onclick=function(){$("directChatModal").classList.add("hidden")};
+$("directChatModal").onclick=function(e){if(e.target===this)$("directChatModal").classList.add("hidden")};
+$("directInput").onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendDirectMessage()}};
 $("settingsModal").onclick=function(e){if(e.target===this)$("settingsModal").classList.add("hidden")};
 $("updateNicknameBtn").onclick=updateNickname;
 $("changePasswordBtn").onclick=changePassword;

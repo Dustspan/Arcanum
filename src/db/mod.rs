@@ -113,6 +113,33 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
         )
     "#).execute(pool).await?;
     
+    // 私聊消息表
+    query(r#"
+        CREATE TABLE IF NOT EXISTS direct_messages (
+            id TEXT PRIMARY KEY,
+            sender_id TEXT NOT NULL,
+            receiver_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            type TEXT DEFAULT 'text',
+            file_name TEXT,
+            file_size INTEGER DEFAULT 0,
+            read INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    "#).execute(pool).await?;
+    
+    // 好友关系表
+    query(r#"
+        CREATE TABLE IF NOT EXISTS friendships (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            friend_id TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, friend_id)
+        )
+    "#).execute(pool).await?;
+    
     // 初始化权限列表
     let permissions = vec![
         ("user_create", "创建用户"),
