@@ -207,6 +207,9 @@ pub async fn grant_user_permission(
     
     grant_permission(&state.db, &user_id, &req.permission_name, &claims.sub).await?;
     
+    // 使缓存失效
+    state.cache.invalidate(&user_id).await;
+    
     Ok(Json(json!({"success": true})))
 }
 
@@ -225,6 +228,9 @@ pub async fn revoke_user_permission(
     let user_id = user_id.ok_or_else(|| crate::error::AppError::BadRequest("用户不存在".to_string()))?;
     
     revoke_permission(&state.db, &user_id, &req.permission_name).await?;
+    
+    // 使缓存失效
+    state.cache.invalidate(&user_id).await;
     
     Ok(Json(json!({"success": true})))
 }

@@ -4,7 +4,7 @@ use axum::{routing::{get, post, delete, put}, Router, response::Html};
 use sqlx::SqlitePool;
 use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer, services::ServeDir};
 
-mod config; mod db; mod error; mod handlers; mod models; mod utils; mod ws; mod static_files; mod storage; mod broadcast;
+mod config; mod db; mod error; mod handlers; mod models; mod utils; mod ws; mod static_files; mod storage; mod broadcast; mod cache;
 
 pub type AppState = Arc<AppStateInner>;
 
@@ -13,6 +13,7 @@ pub struct AppStateInner {
     pub broadcast: broadcast::BroadcastManager,
     pub config: config::Config,
     pub storage: storage::FileStorage,
+    pub cache: cache::PermissionCache,
 }
 
 #[tokio::main]
@@ -27,12 +28,14 @@ async fn main() -> anyhow::Result<()> {
     
     let storage = storage::FileStorage::new(&config.data_dir)?;
     let broadcast_manager = broadcast::BroadcastManager::new();
+    let permission_cache = cache::PermissionCache::new();
     
     let state: AppState = Arc::new(AppStateInner { 
         db, 
         broadcast: broadcast_manager, 
         config, 
-        storage 
+        storage,
+        cache: permission_cache,
     });
     
     // 静态文件服务
