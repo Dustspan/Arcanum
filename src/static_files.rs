@@ -555,6 +555,8 @@ function doDirectChat() {
 function openAdmin() {
   showAdmin.value = true;
   loadAllPermissions();
+  // 自动加载默认标签页数据
+  if (adminTab.value === 'users') loadUsers();
 }
 
 async function loadAllPermissions() {
