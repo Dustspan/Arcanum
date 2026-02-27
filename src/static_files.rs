@@ -1722,30 +1722,17 @@ if(t.closest(".msg-avatar")){const av=t.closest(".msg-avatar");showUserMenu(e,av
 if(!$("userMenu").contains(t)&&!t.closest(".msg-avatar"))closeUserMenu();
 });
 
-window.onload=async function(){
+// 初始化
+window.onload=function(){
+console.log('ARCANUM starting...');
+try{
 initTheme();
 typeWriter($("logoText"),"ARCANUM",0);
 typeWriter($("logoText2"),"ARCANUM",0);
-const t=localStorage.getItem("t"),u=localStorage.getItem("u");
-if(t&&u){
+}catch(e){console.error('init error:',e)}
+
+// 绑定事件
 try{
-token=t;
-user=JSON.parse(u);
-// 验证token是否有效
-const me=await api("/api/auth/me");
-if(me.success){
-user=me.data;
-localStorage.setItem("u",JSON.stringify(user));
-showMain();
-handleInviteLink();
-}else{
-// token无效，清除
-localStorage.clear();
-token="";
-user=null;
-}
-}catch(e){localStorage.clear()}
-}
 $("loginBtn").onclick=login;
 $("themeToggle").onclick=toggleTheme;
 $("loginPwd").onkeydown=function(e){if(e.key==="Enter")login()};
@@ -1772,7 +1759,10 @@ $("closeUserMenuBtn").onclick=closeUserMenu;
 $("closePermModalBtn").onclick=function(){$("permModal").classList.add("hidden")};
 $("closeMuteModalBtn").onclick=function(){$("muteModal").classList.add("hidden")};
 $("savePermsBtn").onclick=savePermissions;
-$("confirmMuteBtn").onclick=async function(){if(!menuTargetUser)return;await api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})});$("muteModal").classList.add("hidden");loadUsers()};
+$("confirmMuteBtn").onclick=function(){
+if(!menuTargetUser)return;
+api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})}).then(function(){$("muteModal").classList.add("hidden");loadUsers()});
+};
 $("permModal").onclick=function(e){if(e.target===this)$("permModal").classList.add("hidden")};
 $("muteModal").onclick=function(e){if(e.target===this)$("muteModal").classList.add("hidden")};
 $("closeGroupInfoModalBtn").onclick=function(){$("groupInfoModal").classList.add("hidden")};
@@ -1831,6 +1821,36 @@ if(this.scrollTop<50&&!isLoadingMore){
 loadMoreMsgs();
 }
 });
+}catch(e){console.error('event binding error:',e)}
+
+// 检查已登录状态
+const t=localStorage.getItem("t"),u=localStorage.getItem("u");
+if(t&&u){
+token=t;
+try{
+user=JSON.parse(u);
+api("/api/auth/me").then(function(me){
+if(me.success){
+user=me.data;
+localStorage.setItem("u",JSON.stringify(user));
+showMain();
+handleInviteLink();
+}else{
+localStorage.clear();
+token="";
+user=null;
+}
+}).catch(function(){
+localStorage.clear();
+token="";
+user=null;
+});
+}catch(e){
+localStorage.clear();
+token="";
+user=null;
+}
+}
 };
 })();
 // 注册Service Worker
