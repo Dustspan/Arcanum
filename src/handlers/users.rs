@@ -287,3 +287,42 @@ fn base64_encode(data: &[u8], content_type: &str) -> String {
     use base64::{Engine as _, engine::general_purpose};
     format!("data:{};base64,{}", content_type, general_purpose::STANDARD.encode(data))
 }
+
+/// 获取用户公开信息（包括在线状态）- 任何登录用户都可访问
+pub async fn get_user_info(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Path(user_id): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let _claims = super::auth::get_claims(&headers, &state.config)?;
+    
+    let user: Option<(String, String, String, Option<String>, i64, String)> = 
+        sqlx::query_as("SELECT uid, nickname, avatar, muted_until, online, account_status FROM users WHERE id = ? OR uid = ?")
+            .bind(&user_id).bind(&user_id)
+            .fetch_optional(&state.db).await?;
+    
+    let user = user.ok_or_else(|| crate::error::AppError::BadRequest("用户不存在".to_string()))?;
+    
+    // 检查是否被禁言
+    let muted = if let Some(muted_until) = &user.3 {
+        if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(muted_until) {
+            dt > chrono::Utc::now()
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "uid": user.0,
+            "nickname": user.1,
+            "avatar": user.2,
+            "online": user.4 == 1,
+            "muted": muted,
+            "status": user.5
+        }
+    })))
+}

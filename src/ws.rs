@@ -57,9 +57,25 @@ async fn handle(socket: WebSocket, state: AppState, claims: Claims) {
     let nickname2 = nickname.clone();
     let token_version2 = token_version;
     
+    // 用于发送 pong 响应
+    let sender_clone = state.clone();
+    let user_id_clone = user_id.clone();
+    
     let recv = async move {
         while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
+                // 处理 ping
+                if text == r#"{"event":"ping"}"# || text.contains(r#""event":"ping""#) {
+                    // 发送 pong
+                    let pong = r#"{"event":"pong"}"#;
+                    // 通过广播发送 pong
+                    let _ = sender_clone.tx.send(WsMessage { 
+                        event: "pong".into(), 
+                        data: serde_json::json!({}) 
+                    });
+                    continue;
+                }
+                
                 // 验证用户状态
                 let valid: Option<(String, i64)> = sqlx::query_as(
                     "SELECT account_status, token_version FROM users WHERE id = ?"
@@ -103,6 +119,15 @@ async fn handle(socket: WebSocket, state: AppState, claims: Claims) {
 }
 
 async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMessage) {
+    // 处理 ping
+    if msg.event == "ping" {
+        let _ = state.tx.send(WsMessage { 
+            event: "pong".into(), 
+            data: serde_json::json!({}) 
+        });
+        return;
+    }
+    
     if msg.event != "message" { return; }
     
     #[derive(serde::Deserialize)]

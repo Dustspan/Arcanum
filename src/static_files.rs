@@ -34,6 +34,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .success{color:var(--success);font-size:12px;margin:8px 0}
 .status{position:fixed;top:8px;right:8px;padding:4px 10px;font-size:10px;border:1px solid var(--border);border-radius:12px;z-index:100}
 .status.on{border-color:var(--accent);color:var(--accent)}
+.status.reconnecting{border-color:var(--warn);color:var(--warn)}
 .channel-card{background:linear-gradient(135deg,rgba(0,255,255,.03),rgba(255,0,255,.03));border:1px solid var(--border);border-radius:12px;padding:14px;margin:8px 0;cursor:pointer;transition:all .2s}
 .channel-card:active{border-color:var(--accent);transform:scale(.99)}
 .channel-card h3{font-size:15px;margin-bottom:4px}
@@ -45,8 +46,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;background:#050505}
 .msg-row{display:flex;align-items:flex-start;gap:8px}
 .msg-row.me{flex-direction:row-reverse}
-.msg-avatar{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#000;flex-shrink:0;cursor:pointer;overflow:hidden;object-fit:cover}
+.msg-avatar{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#000;flex-shrink:0;cursor:pointer;overflow:hidden;object-fit:cover;position:relative}
 .msg-avatar img{width:100%;height:100%;object-fit:cover}
+.msg-avatar .online-dot{position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg)}
+.msg-avatar .online-dot.on{background:var(--success)}
+.msg-avatar .online-dot.off{background:var(--muted)}
 .msg-bubble{max-width:70%;padding:10px 12px;border-radius:12px;font-size:14px;line-height:1.5;word-break:break-word}
 .msg-bubble.in{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px}
 .msg-bubble.out{background:var(--accent);color:#000;border-top-right-radius:4px}
@@ -88,10 +92,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .item-card .item-actions{display:flex;gap:4px;flex-wrap:wrap}
 .item-card .item-actions button{flex:1;min-width:50px}
 .empty{text-align:center;color:var(--muted);font-size:13px;padding:24px}
-.user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;z-index:1000;min-width:160px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
-.user-menu-header{padding:8px;border-bottom:1px solid var(--border);margin-bottom:8px}
-.user-menu-header h4{font-size:14px;font-weight:500}
-.user-menu-header p{font-size:11px;color:var(--muted)}
+.user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;z-index:1000;min-width:180px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.user-menu-header{padding:8px;border-bottom:1px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.user-menu-avatar{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#000;overflow:hidden;flex-shrink:0}
+.user-menu-avatar img{width:100%;height:100%;object-fit:cover}
+.user-menu-info h4{font-size:14px;font-weight:500}
+.user-menu-info p{font-size:11px;color:var(--muted)}
+.user-menu-status{font-size:11px;margin-top:2px}
+.user-menu-status.online{color:var(--success)}
+.user-menu-status.offline{color:var(--muted)}
+.user-menu-status.muted{color:var(--warn)}
 .user-menu-item{display:block;width:100%;padding:8px 12px;background:transparent;border:none;color:var(--text);font-size:13px;text-align:left;cursor:pointer;border-radius:6px}
 .user-menu-item:hover{background:var(--border)}
 .user-menu-item.danger{color:var(--error)}
@@ -214,15 +224,15 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 
 <div class="user-menu hidden" id="userMenu">
 <div class="user-menu-header">
+<div class="user-menu-avatar" id="menuAvatar">U</div>
+<div class="user-menu-info">
 <h4 id="menuUserName">用户名</h4>
 <p id="menuUserInfo">UID: xxx</p>
+<p class="user-menu-status" id="menuUserStatus">在线</p>
 </div>
-<button class="user-menu-item warn" id="menuMuteBtn" onclick="menuMute()">禁言</button>
-<button class="user-menu-item" id="menuUnmuteBtn" onclick="menuUnmute()">解除禁言</button>
-<button class="user-menu-item warn" onclick="menuKick()">踢出</button>
-<button class="user-menu-item danger" onclick="menuBan()">封禁</button>
-<button class="user-menu-item" id="menuPermBtn" onclick="menuGrant()">管理权限</button>
-<button class="user-menu-item" onclick="closeUserMenu()">取消</button>
+</div>
+<div id="menuActions"></div>
+<button class="user-menu-item" onclick="closeUserMenu()">关闭</button>
 </div>
 
 <div class="modal-overlay hidden" id="permModal" onclick="if(event.target===this)closePermModal()">
@@ -264,7 +274,15 @@ let menuTargetUser=null;
 let selectedMuteDuration=30;
 let allPermissions=[];
 let userPermissions={};
+let onlineUsers=new Set();
 const API=location.origin;
+
+// WebSocket 重连机制
+let wsReconnectAttempts=0;
+let wsMaxReconnectAttempts=10;
+let wsReconnectDelay=1000;
+let wsHeartbeatInterval=null;
+let wsLastPong=0;
 
 function debounce(fn,delay){let t;return function(...args){clearTimeout(t);t=setTimeout(()=>fn.apply(this,args),delay)}}
 function throttle(fn,delay){let last=0;return function(...args){const now=Date.now();if(now-last>=delay){last=now;fn.apply(this,args)}}}
@@ -292,7 +310,7 @@ document.getElementById("mainPage").classList.remove("hidden");
 if(user.role==="admin"||user.permissions&&user.permissions.length>0){
 document.getElementById("adminEntry").classList.remove("hidden");
 }
-connect();loadMyChannels();
+connectWebSocket();loadMyChannels();
 }
 
 async function enterChannel(){
@@ -331,7 +349,9 @@ el.scrollTop=el.scrollHeight;
 
 function renderMessage(m){
 const isMe=m.senderId===user.id;
+const isOnline=onlineUsers.has(m.senderId);
 const avatarHtml=m.senderAvatar?"<img src=\""+m.senderAvatar+"\" alt=\"\">":m.senderNickname.charAt(0).toUpperCase();
+const onlineDot="<span class=\"online-dot "+(isOnline?"on":"off")+"\"></span>";
 let contentHtml="";
 if(m.msgType==="image"){
 contentHtml="<img class=\"msg-image\" src=\""+m.content+"\" onclick=\"viewImage('"+m.content+"')\" loading=\"lazy\">";
@@ -343,7 +363,7 @@ contentHtml="<div class=\"msg-file\"><div class=\"msg-file-icon\"><svg width=\"1
 else{
 contentHtml=esc(m.content);
 }
-return"<div class=\"msg-row"+(isMe?" me":"")+"\"><div class=\"msg-avatar\" onclick=\"showUserMenu(event,'"+m.senderId+"','"+esc(m.senderNickname)+"','"+m.senderId+"')\">"+avatarHtml+"</div><div class=\"msg-bubble "+(isMe?"out":"in")+"\"><div class=\"msg-nick\">"+esc(m.senderNickname)+"</div>"+contentHtml+"<div class=\"msg-time\">"+formatTime(m.createdAt)+"</div></div></div>";
+return"<div class=\"msg-row"+(isMe?" me":"")+"\"><div class=\"msg-avatar\" onclick=\"showUserMenu(event,'"+m.senderId+"','"+esc(m.senderNickname)+"')\">"+avatarHtml+onlineDot+"</div><div class=\"msg-bubble "+(isMe?"out":"in")+"\"><div class=\"msg-nick\">"+esc(m.senderNickname)+"</div>"+contentHtml+"<div class=\"msg-time\">"+formatTime(m.createdAt)+"</div></div></div>";
 }
 
 const send=throttle(function(){
@@ -393,19 +413,106 @@ finally{hideUploadProgress()}
 e.target.value="";
 }
 
-function connect(){
+// WebSocket 连接与重连
+function connectWebSocket(){
 const p=location.protocol==="https:"?"wss:":"ws:";
-ws=new WebSocket(p+"//"+location.host+"/ws?token="+token);
-ws.onopen=()=>{document.getElementById("status").textContent="在线";document.getElementById("status").classList.add("on")};
-ws.onclose=()=>{document.getElementById("status").textContent="离线";document.getElementById("status").classList.remove("on")};
-ws.onmessage=e=>{
+const wsUrl=p+"//"+location.host+"/ws?token="+token;
+try{
+ws=new WebSocket(wsUrl);
+ws.onopen=onWsOpen;
+ws.onclose=onWsClose;
+ws.onerror=onWsError;
+ws.onmessage=onWsMessage;
+}catch(e){
+console.error("WebSocket连接失败:",e);
+scheduleReconnect();
+}
+}
+
+function onWsOpen(){
+console.log("WebSocket已连接");
+wsReconnectAttempts=0;
+wsReconnectDelay=1000;
+updateStatus("在线","on");
+startHeartbeat();
+}
+
+function onWsClose(event){
+console.log("WebSocket已断开:",event.code,event.reason);
+stopHeartbeat();
+updateStatus("离线","");
+if(event.code!==1000&&event.code!==1001){
+scheduleReconnect();
+}
+}
+
+function onWsError(error){
+console.error("WebSocket错误:",error);
+stopHeartbeat();
+}
+
+function onWsMessage(e){
 const m=JSON.parse(e.data);
-if(m.event==="message"&&m.data.groupId===groupId){
+if(m.event==="pong"){
+wsLastPong=Date.now();
+return;
+}
+if(m.event==="message"){
+if(m.data.senderId){
+onlineUsers.add(m.data.senderId);
+}
+if(m.data.groupId===groupId){
 const el=document.getElementById("msgs");
 el.innerHTML+=renderMessage(m.data);
 el.scrollTop=el.scrollHeight;
 }
-};
+}
+}
+
+function scheduleReconnect(){
+if(wsReconnectAttempts>=wsMaxReconnectAttempts){
+console.log("达到最大重连次数，停止重连");
+updateStatus("连接失败","");
+return;
+}
+wsReconnectAttempts++;
+const delay=Math.min(wsReconnectDelay*Math.pow(2,wsReconnectAttempts-1),30000);
+console.log("将在"+delay+"ms后重连，第"+wsReconnectAttempts+"次");
+updateStatus("重连中("+wsReconnectAttempts+")","reconnecting");
+setTimeout(()=>{
+if(!ws||ws.readyState===WebSocket.CLOSED){
+connectWebSocket();
+}
+},delay);
+}
+
+function startHeartbeat(){
+stopHeartbeat();
+wsLastPong=Date.now();
+wsHeartbeatInterval=setInterval(()=>{
+if(ws&&ws.readyState===WebSocket.OPEN){
+if(Date.now()-wsLastPong>60000){
+console.log("心跳超时，重连");
+ws.close();
+return;
+}
+ws.send(JSON.stringify({event:"ping"}));
+}
+},30000);
+}
+
+function stopHeartbeat(){
+if(wsHeartbeatInterval){
+clearInterval(wsHeartbeatInterval);
+wsHeartbeatInterval=null;
+}
+}
+
+function updateStatus(text,cls){
+const status=document.getElementById("status");
+status.textContent=text;
+status.className="status";
+if(cls)status.classList.add(cls);
 }
 
 function showAdmin(){
@@ -454,6 +561,7 @@ const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
 el.innerHTML=d.data.length?d.data.map(u=>{
 userPermissions[u.uid]=u.permissions||[];
+if(u.online)onlineUsers.add(u.id);
 let badges="<span class=\"item-badge "+(u.online?"online":"")+"\">"+(u.online?"在线":"离线")+"</span>";
 if(u.role==="admin")badges="<span class=\"item-badge admin\">管理员</span>"+badges;
 if(u.status==="banned")badges="<span class=\"item-badge banned\">已封禁</span>"+badges;
@@ -542,24 +650,69 @@ if(d.success){allPermissions=d.data}
 }catch(e){}
 }
 
-function showUserMenu(e,userId,nick,uid){
+// 用户菜单 - 显示在线状态
+async function showUserMenu(e,userId,nick){
 e.stopPropagation();
 const menu=document.getElementById("userMenu");
 const isSelf=userId===user.id;
 const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
-document.getElementById("menuMuteBtn").classList.toggle("hidden",isSelf||!hasPerm("user_mute"));
-document.getElementById("menuUnmuteBtn").classList.toggle("hidden",isSelf||!hasPerm("user_mute"));
-menu.querySelectorAll(".user-menu-item")[2].classList.toggle("hidden",isSelf||!hasPerm("user_kick"));
-menu.querySelectorAll(".user-menu-item")[3].classList.toggle("hidden",isSelf||!hasPerm("user_ban"));
-document.getElementById("menuPermBtn").classList.toggle("hidden",isSelf||!hasPerm("permission_grant"));
+
+// 获取用户信息
+let userInfo=null;
+try{
+const d=await api("/api/users/"+userId);
+if(d.success)userInfo=d.data;
+}catch(err){}
+
+// 更新头像
+const avatarEl=document.getElementById("menuAvatar");
+if(userInfo&&userInfo.avatar){
+avatarEl.innerHTML="<img src=\""+userInfo.avatar+"\" alt=\"\">";
+}else{
+avatarEl.textContent=nick.charAt(0).toUpperCase();
+}
+
 document.getElementById("menuUserName").textContent=nick;
-document.getElementById("menuUserInfo").textContent="UID: "+uid;
-menuTargetUser={uid,userId,nick};
-menu.style.left=Math.min(e.clientX,window.innerWidth-180)+"px";
-menu.style.top=Math.min(e.clientY,window.innerHeight-250)+"px";
+document.getElementById("menuUserInfo").textContent="UID: "+(userInfo?userInfo.uid:userId);
+
+// 更新在线状态
+const statusEl=document.getElementById("menuUserStatus");
+if(userInfo){
+if(userInfo.status==="banned"){
+statusEl.textContent="已封禁";
+statusEl.className="user-menu-status offline";
+}else if(userInfo.muted){
+statusEl.textContent="禁言中";
+statusEl.className="user-menu-status muted";
+}else if(userInfo.online){
+statusEl.textContent="在线";
+statusEl.className="user-menu-status online";
+}else{
+statusEl.textContent="离线";
+statusEl.className="user-menu-status offline";
+}
+}else{
+statusEl.textContent="";
+}
+
+// 构建操作按钮
+let actionsHtml="";
+if(!isSelf){
+if(hasPerm("user_mute"))actionsHtml+="<button class=\"user-menu-item warn\" onclick=\"menuMute()\">禁言</button>";
+if(hasPerm("user_mute"))actionsHtml+="<button class=\"user-menu-item\" onclick=\"menuUnmute()\">解除禁言</button>";
+if(hasPerm("user_kick"))actionsHtml+="<button class=\"user-menu-item warn\" onclick=\"menuKick()\">踢出</button>";
+if(hasPerm("user_ban"))actionsHtml+="<button class=\"user-menu-item danger\" onclick=\"menuBan()\">封禁</button>";
+if(hasPerm("permission_grant"))actionsHtml+="<button class=\"user-menu-item\" onclick=\"menuGrant()\">管理权限</button>";
+}
+document.getElementById("menuActions").innerHTML=actionsHtml;
+
+menuTargetUser={uid:userInfo?userInfo.uid:userId,userId,nick};
+menu.style.left=Math.min(e.clientX,window.innerWidth-200)+"px";
+menu.style.top=Math.min(e.clientY,window.innerHeight-300)+"px";
 menu.classList.remove("hidden");
 }
+
 function closeUserMenu(){document.getElementById("userMenu").classList.add("hidden")}
 document.addEventListener("click",closeUserMenu);
 

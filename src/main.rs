@@ -47,6 +47,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/admin/users/:uid/permissions", delete(handlers::users::revoke_user_permission))
         .route("/api/admin/permissions", get(handlers::users::list_permissions))
         .route("/api/users/avatar", post(handlers::users::upload_avatar))
+        .route("/api/users/:id", get(handlers::users::get_user_info))
         // IP管理路由
         .route("/api/admin/ips", get(handlers::admin::list_banned_ips))
         .route("/api/admin/ips/:ip", delete(handlers::admin::unban_ip))
