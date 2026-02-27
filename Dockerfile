@@ -1,5 +1,5 @@
 # 构建阶段
-FROM rust:1.82-alpine AS builder
+FROM rust:alpine AS builder
 RUN apk add --no-cache musl-dev
 WORKDIR /app
 COPY Cargo.toml ./
