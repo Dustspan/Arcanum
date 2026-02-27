@@ -7,7 +7,8 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#000;--card:#0d0d0d;--text:#f0f0f0;--muted:#666;--accent:#0ff;--accent2:#f0f;--border:#1a1a1a;--error:#ff4466;--success:#00ff88;--warn:#ffaa00}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;min-height:100vh;min-height:100dvh;line-height:1.4}
+[data-theme="light"]{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--muted:#888;--accent:#088;--accent2:#a0a;--border:#ddd;--error:#c44;--success:#0a0;--warn:#a80}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;min-height:100vh;min-height:100dvh;line-height:1.4;transition:background .3s,color .3s}
 @keyframes glitch{0%,100%{text-shadow:-2px 0 var(--accent2),2px 0 var(--accent)}25%{text-shadow:2px 0 var(--accent2),-2px 0 var(--accent)}50%{text-shadow:-1px 0 var(--accent2),1px 0 var(--accent)}75%{text-shadow:1px 0 var(--accent2),-1px 0 var(--accent)}}
 .glitch{animation:glitch .3s infinite}
 .scanlines::before{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.06),rgba(0,0,0,.06) 1px,transparent 1px,transparent 2px);pointer-events:none;z-index:9999}
@@ -130,6 +131,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .mute-option.on{border-color:var(--accent);color:var(--accent)}
 .upload-progress{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--accent);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--accent);z-index:1000}
 .loading-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--accent);border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin-right:8px}
+.theme-toggle{position:absolute;top:12px;right:12px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;transition:all .2s}
+.theme-toggle:hover{border-color:var(--accent)}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(min-width:540px){.container{padding:16px}}
 </style>
@@ -139,6 +142,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 
 <div id="loginPage" class="container">
 <div class="logo glitch"><span id="logoText"></span></div>
+<button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
 <div class="card">
 <input class="input" id="loginUid" placeholder="UID" autocapitalize="characters" style="margin-bottom:8px">
 <input class="input" type="password" id="loginPwd" placeholder="密码" style="margin-bottom:8px">
@@ -313,6 +317,28 @@ let wsMaxReconnectAttempts=10;
 let wsReconnectDelay=1000;
 let wsHeartbeatInterval=null;
 let wsLastPong=0;
+
+// 主题切换
+function initTheme(){
+const saved=localStorage.getItem("theme");
+if(saved==="light"){
+document.documentElement.setAttribute("data-theme","light");
+$("themeToggle").textContent="☀";
+}
+}
+
+function toggleTheme(){
+const current=document.documentElement.getAttribute("data-theme");
+if(current==="light"){
+document.documentElement.removeAttribute("data-theme");
+localStorage.setItem("theme","dark");
+$("themeToggle").textContent="🌙";
+}else{
+document.documentElement.setAttribute("data-theme","light");
+localStorage.setItem("theme","light");
+$("themeToggle").textContent="☀";
+}
+}
 
 function $(id){return document.getElementById(id)}
 
@@ -913,11 +939,13 @@ if(!$("userMenu").contains(t)&&!t.closest(".msg-avatar"))closeUserMenu();
 });
 
 window.onload=function(){
+initTheme();
 typeWriter($("logoText"),"ARCANUM",0);
 typeWriter($("logoText2"),"ARCANUM",0);
 const t=localStorage.getItem("t"),u=localStorage.getItem("u");
 if(t&&u){try{token=t;user=JSON.parse(u);showMain()}catch(e){localStorage.clear()}}
 $("loginBtn").onclick=login;
+$("themeToggle").onclick=toggleTheme;
 $("loginPwd").onkeydown=function(e){if(e.key==="Enter")login()};
 $("enterChannelBtn").onclick=enterChannel;
 $("cipherInput").onkeydown=function(e){if(e.key==="Enter")enterChannel()};
