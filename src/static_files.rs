@@ -1722,12 +1722,30 @@ if(t.closest(".msg-avatar")){const av=t.closest(".msg-avatar");showUserMenu(e,av
 if(!$("userMenu").contains(t)&&!t.closest(".msg-avatar"))closeUserMenu();
 });
 
-window.onload=function(){
+window.onload=async function(){
 initTheme();
 typeWriter($("logoText"),"ARCANUM",0);
 typeWriter($("logoText2"),"ARCANUM",0);
 const t=localStorage.getItem("t"),u=localStorage.getItem("u");
-if(t&&u){try{token=t;user=JSON.parse(u);showMain();handleInviteLink()}catch(e){localStorage.clear()}}
+if(t&&u){
+try{
+token=t;
+user=JSON.parse(u);
+// 验证token是否有效
+const me=await api("/api/auth/me");
+if(me.success){
+user=me.data;
+localStorage.setItem("u",JSON.stringify(user));
+showMain();
+handleInviteLink();
+}else{
+// token无效，清除
+localStorage.clear();
+token="";
+user=null;
+}
+}catch(e){localStorage.clear()}
+}
 $("loginBtn").onclick=login;
 $("themeToggle").onclick=toggleTheme;
 $("loginPwd").onkeydown=function(e){if(e.key==="Enter")login()};
