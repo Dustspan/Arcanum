@@ -752,3 +752,111 @@ pub async fn mark_mention_read(
     
     Ok(Json(json!({"success": true})))
 }
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ForwardMessageRequest {
+    pub target_group_id: String,  // 目标频道ID
+}
+
+/// 转发消息
+pub async fn forward_message(
+    State(state): State<AppState>, 
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<ForwardMessageRequest>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    // 获取原消息
+    let original: Option<(String, String, String, String, String, Option<String>, i64)> = sqlx::query_as(
+        "SELECT m.sender_id, m.group_id, m.content, m.type, m.file_name, m.file_size, m.burn_after FROM messages m WHERE m.id = ?"
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    let original = original.ok_or(crate::error::AppError::NotFound)?;
+    
+    // 检查用户是否是原消息所在频道的成员
+    let is_member: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM group_members WHERE group_id = ? AND user_id = ?"
+    )
+    .bind(&original.1).bind(&claims.sub)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    if is_member.is_none() {
+        return Err(crate::error::AppError::Forbidden);
+    }
+    
+    // 检查用户是否是目标频道的成员
+    let is_target_member: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM group_members WHERE group_id = ? AND user_id = ?"
+    )
+    .bind(&req.target_group_id).bind(&claims.sub)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    if is_target_member.is_none() {
+        return Err(crate::error::AppError::BadRequest("你不是目标频道的成员".to_string()));
+    }
+    
+    // 创建转发消息
+    let new_id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    
+    // 获取原消息发送者昵称
+    let original_sender: String = sqlx::query_scalar("SELECT nickname FROM users WHERE id = ?")
+        .bind(&original.0)
+        .fetch_optional(&state.db)
+        .await?
+        .unwrap_or_else(|| "未知用户".to_string());
+    
+    // 在消息内容前添加转发标记
+    let forwarded_content = format!("[转发自 {}]\n{}", original_sender, original.2);
+    
+    // 保存需要用的值
+    let file_name = original.4.clone();
+    let file_size = original.5.clone();
+    let burn_after = original.6;
+    let msg_type = original.3.clone();
+    
+    sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, file_name, file_size, burn_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(&new_id).bind(&claims.sub).bind(&req.target_group_id)
+        .bind(&forwarded_content).bind(&original.3)
+        .bind(&original.4).bind(&original.5).bind(original.6).bind(&now)
+        .execute(&state.db)
+        .await?;
+    
+    let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
+        .bind(&claims.sub).fetch_optional(&state.db).await?
+        .flatten();
+    
+    // 广播到目标频道
+    let _ = state.broadcast.broadcast_to_group(&req.target_group_id, WsMessage {
+        event: "message".into(),
+        data: json!({
+            "id": new_id,
+            "groupId": req.target_group_id,
+            "senderId": claims.sub,
+            "senderNickname": claims.nickname,
+            "senderAvatar": avatar,
+            "content": forwarded_content,
+            "msgType": msg_type,
+            "fileName": file_name,
+            "fileSize": file_size,
+            "burnAfter": burn_after,
+            "forwarded": true,
+            "originalSender": original_sender,
+            "createdAt": now
+        })
+    });
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "id": new_id,
+            "targetGroupId": req.target_group_id
+        }
+    })))
+}

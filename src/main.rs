@@ -90,6 +90,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/messages/:id/recall", post(handlers::messages::recall_message))
         .route("/api/messages/:id/read", post(handlers::messages::mark_read))
         .route("/api/messages/:id/pin", post(handlers::messages::toggle_pin_message))
+        .route("/api/messages/:id/forward", post(handlers::messages::forward_message))
         .route("/api/messages/group/:id/read", post(handlers::messages::mark_group_read))
         .route("/api/messages/file/:id", post(handlers::messages::upload_file))
         .route("/api/mentions", get(handlers::messages::get_mentions))

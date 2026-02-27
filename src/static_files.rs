@@ -85,6 +85,13 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .msg-row.pinned .msg-bubble{border-color:var(--warn)}
 .pin-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:10px;opacity:.5;margin-left:4px}
 .pin-btn:hover{opacity:1;color:var(--warn)}
+.forward-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:10px;opacity:.5;margin-left:4px}
+.forward-btn:hover{opacity:1;color:var(--accent)}
+.forward-item{padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
+.forward-item:last-child{border-bottom:none}
+.forward-item:hover{background:rgba(255,255,255,.05)}
+.forward-item-name{font-size:14px;font-weight:500}
+.forward-item-members{font-size:11px;color:var(--muted);margin-top:2px}
 .mention{color:var(--accent);font-weight:500;cursor:pointer}
 .mention:hover{text-decoration:underline}
 .mention-badge{position:absolute;top:-4px;right:-4px;background:var(--error);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;min-width:16px;text-align:center}
@@ -391,6 +398,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 </div>
 
+<div class="modal-overlay hidden" id="forwardModal">
+<div class="modal">
+<div class="modal-header">
+<h3>转发到频道</h3>
+<button class="modal-close" id="closeForwardModalBtn">×</button>
+</div>
+<div id="forwardList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
+</div>
+</div>
+
 <div class="upload-progress hidden" id="uploadProgress"><span class="loading-spinner"></span>上传中...</div>
 
 <script>
@@ -589,9 +606,11 @@ const pinnedHtml=m.pinned?'<span class="pinned-badge">📌 置顶</span>':"";
 // 置顶按钮（管理员或频道所有者）
 const canPin=user.role==="admin"||(user.id===m.groupOwnerId);
 const pinBtn=canPin?'<button class="pin-btn" onclick="togglePin(\''+m.id+'\')">'+(m.pinned?"取消置顶":"置顶")+'</button>':"";
+// 转发按钮
+const forwardBtn='<button class="forward-btn" onclick="showForwardModal(\''+m.id+'\')">↗</button>';
 // 添加双击撤回功能（仅限自己发送的消息）
 const recallAttr=isMe?' ondblclick="recallMessage(\''+m.id+'\')" title="双击撤回"':"";
-return'<div class="msg-row'+(isMe?" me":"")+(m.pinned?" pinned":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"'+recallAttr+'><div class="msg-nick">'+esc(m.senderNickname)+pinnedHtml+'</div>'+replyHtml+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'<button class="reply-btn" onclick="setReply(\''+m.id+'\',\''+esc(m.senderNickname)+'\',\''+esc(m.content.substring(0,30))+'\')">↩</button>'+pinBtn+'</div></div></div>';
+return'<div class="msg-row'+(isMe?" me":"")+(m.pinned?" pinned":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"'+recallAttr+'><div class="msg-nick">'+esc(m.senderNickname)+pinnedHtml+'</div>'+replyHtml+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'<button class="reply-btn" onclick="setReply(\''+m.id+'\',\''+esc(m.senderNickname)+'\',\''+esc(m.content.substring(0,30))+'\')">↩</button>'+forwardBtn+pinBtn+'</div></div></div>';
 }
 
 async function togglePin(msgId){
@@ -609,6 +628,44 @@ msgEl.classList.remove("pinned");
 }
 }else{alert(d.error||"操作失败")}
 }catch(e){alert("操作失败")}
+}
+
+// 转发功能
+let forwardMsgId=null;
+
+async function showForwardModal(msgId){
+forwardMsgId=msgId;
+try{
+const d=await api("/api/groups");
+if(d.success){
+const el=$("forwardList");
+// 过滤掉当前频道
+const groups=d.data.filter(g=>g.id!==groupId);
+if(groups.length===0){
+el.innerHTML='<div class="empty">没有可转发的频道</div>';
+}else{
+el.innerHTML=groups.map(g=>{
+const members=g.memberCount||0;
+return'<div class="forward-item" data-gid="'+g.id+'">'+
+'<div class="forward-item-name">'+esc(g.name)+'</div>'+
+'<div class="forward-item-members">'+members+' 成员</div>'+
+'</div>';
+}).join("");
+}
+$("forwardModal").classList.remove("hidden");
+}
+}catch(e){}
+}
+
+async function forwardMessage(targetGroupId){
+if(!forwardMsgId)return;
+try{
+const d=await api("/api/messages/"+forwardMsgId+"/forward",{method:"POST",body:JSON.stringify({target_group_id:targetGroupId})});
+if(d.success){
+$("forwardModal").classList.add("hidden");
+alert("转发成功");
+}else{alert(d.error||"转发失败")}
+}catch(e){alert("转发失败")}
 }
 
 let replyTo=null;
@@ -1287,6 +1344,14 @@ $("settingsModal").onclick=function(e){if(e.target===this)$("settingsModal").cla
 $("updateNicknameBtn").onclick=updateNickname;
 $("changePasswordBtn").onclick=changePassword;
 $("avatarInput").onchange=uploadAvatar;
+$("closeForwardModalBtn").onclick=function(){$("forwardModal").classList.add("hidden")};
+$("forwardModal").onclick=function(e){if(e.target===this)$("forwardModal").classList.add("hidden")};
+$("forwardList").onclick=function(e){
+const item=e.target.closest(".forward-item");
+if(item){
+forwardMessage(item.dataset.gid);
+}
+};
 $("searchInput").oninput=function(){
 clearTimeout(searchTimeout);
 searchTimeout=setTimeout(doSearch,300);
