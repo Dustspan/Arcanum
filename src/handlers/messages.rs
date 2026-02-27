@@ -126,6 +126,54 @@ pub async fn clear_messages(State(state): State<AppState>, headers: HeaderMap, P
     Ok(Json(json!({"success": true})))
 }
 
+/// 撤回消息 - 用户只能撤回自己发送的消息，且在时间限制内
+pub async fn recall_message(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Path(id): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    // 获取消息信息
+    let msg: Option<(String, String, String)> = sqlx::query_as(
+        "SELECT sender_id, group_id, created_at FROM messages WHERE id = ?"
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    let msg = msg.ok_or_else(|| crate::error::AppError::NotFound)?;
+    
+    // 检查是否是消息发送者
+    if msg.0 != claims.sub {
+        // 如果不是发送者，检查是否有删除权限
+        check_permission(&claims, "message_delete")?;
+    } else {
+        // 如果是发送者，检查时间限制（2分钟内可撤回）
+        if let Ok(created_at) = chrono::DateTime::parse_from_rfc3339(&msg.2) {
+            let elapsed = chrono::Utc::now() - created_at.with_timezone(&chrono::Utc);
+            if elapsed.num_minutes() > 2 {
+                return Err(crate::error::AppError::BadRequest("消息发送超过2分钟，无法撤回".to_string()));
+            }
+        }
+    }
+    
+    // 删除消息
+    sqlx::query("DELETE FROM messages WHERE id = ?")
+        .bind(&id).execute(&state.db).await?;
+    
+    // 广播撤回通知
+    let _ = state.broadcast.broadcast_to_group(&msg.1, WsMessage {
+        event: "message_recall".into(),
+        data: json!({
+            "id": id,
+            "groupId": msg.1
+        })
+    });
+    
+    Ok(Json(json!({"success": true})))
+}
+
 pub async fn delete_message(
     State(state): State<AppState>, 
     headers: HeaderMap, 

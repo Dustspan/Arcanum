@@ -366,7 +366,22 @@ let contentHtml="";
 if(m.msgType==="image")contentHtml='<img class="msg-image" src="'+m.content+'" onclick="window.open(\''+m.content+'\',\'_blank\')" loading="lazy">';
 else if(m.msgType==="file"){const size=formatFileSize(m.fileSize);contentHtml='<div class="msg-file"><div class="msg-file-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div class="msg-file-info"><div class="msg-file-name">'+esc(m.fileName||"文件")+'</div><div class="msg-file-size">'+size+'</div></div></div>';}
 else contentHtml=esc(m.content);
-return'<div class="msg-row'+(isMe?" me":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'</div></div></div>';
+// 添加双击撤回功能（仅限自己发送的消息）
+const recallAttr=isMe?' ondblclick="recallMessage(\''+m.id+'\')" title="双击撤回"':"";
+return'<div class="msg-row'+(isMe?" me":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"'+recallAttr+'><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'</div></div></div>';
+}
+
+async function recallMessage(msgId){
+if(!confirm("确定撤回这条消息？"))return;
+try{
+const d=await api("/api/messages/"+msgId+"/recall",{method:"POST"});
+if(d.success){
+const el=$("msgs");
+const msgEl=el.querySelector('[data-mid="'+msgId+'"]');
+if(msgEl)msgEl.remove();
+displayedMsgIds.delete(msgId);
+}else{alert(d.error||"撤回失败")}
+}catch(e){alert("撤回失败")}
 }
 
 function send(){
@@ -434,6 +449,15 @@ if(m.event==="pong"){wsLastPong=Date.now();return}
 if(m.event==="message"){
 if(m.data.senderId)onlineUsers.add(m.data.senderId);
 if(m.data.groupId===groupId)addMessage(m.data);
+}
+if(m.event==="message_recall"){
+// 处理消息撤回
+if(m.data.groupId===groupId){
+const el=$("msgs");
+const msgEl=el.querySelector('[data-mid="'+m.data.id+'"]');
+if(msgEl)msgEl.remove();
+displayedMsgIds.delete(m.data.id);
+}
 }
 }
 
