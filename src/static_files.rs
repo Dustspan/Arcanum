@@ -67,12 +67,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .chat-input textarea:focus{border-color:var(--accent)}
 .chat-actions{display:flex;gap:4px}
 .chat-action-btn{width:36px;height:36px;background:var(--card);border:1px solid var(--border);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s}
-.chat-action-btn:hover{border-color:var(--accent);color:var(--accent)}
+.chat-action-btn:hover{border-color:var(--accent);color:var(--accent")}
 .send-btn{width:40px;height:40px;background:var(--accent);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .send-btn svg{width:18px;height:18px;fill:#000}
 .admin-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
 .admin-tab{flex:1;min-width:60px;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:12px;cursor:pointer;text-align:center}
-.admin-tab.on{border-color:var(--accent);color:var(--accent)}
+.admin-tab.on{border-color:var(--accent);color:var(--accent")}
 .admin-section{display:none}
 .admin-section.on{display:block}
 .admin-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
@@ -80,12 +80,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .item-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin:8px 0}
 .item-card .item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .item-card .item-title{font-size:14px;font-weight:500}
-.item-card .item-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--border);color:var(--muted)}
-.item-card .item-badge.admin{background:rgba(255,170,0,.2);color:var(--warn)}
-.item-card .item-badge.banned{background:rgba(255,68,102,.2);color:var(--error)}
-.item-card .item-badge.active{background:rgba(0,255,136,.2);color:var(--success)}
-.item-card .item-badge.online{background:rgba(0,255,255,.2);color:var(--accent)}
-.item-card .item-badge.muted{background:rgba(255,170,0,.2);color:var(--warn)}
+.item-card .item-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--border);color:var(--muted")}
+.item-card .item-badge.admin{background:rgba(255,170,0,.2);color:var(--warn")}
+.item-card .item-badge.banned{background:rgba(255,68,102,.2);color:var(--error")}
+.item-card .item-badge.active{background:rgba(0,255,136,.2);color:var(--success")}
+.item-card .item-badge.online{background:rgba(0,255,255,.2);color:var(--accent")}
+.item-card .item-badge.muted{background:rgba(255,170,0,.2);color:var(--warn")}
 .item-card .item-info{font-size:11px;color:var(--muted);margin-bottom:8px}
 .item-card .item-actions{display:flex;gap:4px;flex-wrap:wrap}
 .item-card .item-actions button{flex:1;min-width:50px}
@@ -95,15 +95,15 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .user-menu-avatar{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#000;overflow:hidden;flex-shrink:0}
 .user-menu-avatar img{width:100%;height:100%;object-fit:cover}
 .user-menu-info h4{font-size:14px;font-weight:500}
-.user-menu-info p{font-size:11px;color:var(--muted)}
+.user-menu-info p{font-size:11px;color:var(--muted")}
 .user-menu-status{font-size:11px;margin-top:2px}
-.user-menu-status.online{color:var(--success)}
-.user-menu-status.offline{color:var(--muted)}
-.user-menu-status.muted{color:var(--warn)}
+.user-menu-status.online{color:var(--success")}
+.user-menu-status.offline{color:var(--muted")}
+.user-menu-status.muted{color:var(--warn")}
 .user-menu-item{display:block;width:100%;padding:8px 12px;background:transparent;border:none;color:var(--text);font-size:13px;text-align:left;cursor:pointer;border-radius:6px}
-.user-menu-item:hover{background:var(--border)}
-.user-menu-item.danger{color:var(--error)}
-.user-menu-item.warn{color:var(--warn)}
+.user-menu-item:hover{background:var(--border")}
+.user-menu-item.danger{color:var(--error")}
+.user-menu-item.warn{color:var(--warn")}
 .permission-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .permission-tag{font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(0,255,255,.1);color:var(--accent);border:1px solid rgba(0,255,255,.2)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:2000}
@@ -114,11 +114,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .permission-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:300px;overflow-y:auto}
 .permission-item{padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
 .permission-item label{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer}
-.permission-item input{accent-color:var(--accent)}
+.permission-item input{accent-color:var(--accent")}
 .mute-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .mute-option{padding:6px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer}
-.mute-option:hover{border-color:var(--accent)}
-.mute-option.on{border-color:var(--accent);color:var(--accent)}
+.mute-option:hover{border-color:var(--accent")}
+.mute-option.on{border-color:var(--accent);color:var(--accent")}
 .upload-progress{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--accent);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--accent);z-index:1000}
 .loading-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--accent);border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin-right:8px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -268,6 +268,7 @@ let selectedMuteDuration=30;
 let allPermissions=[];
 let userPermissions={};
 let onlineUsers=new Set();
+let displayedMsgIds=new Set(); // 消息去重
 const API=location.origin;
 
 let wsReconnectAttempts=0;
@@ -337,7 +338,7 @@ if(d.success){el.innerHTML=d.data.length?d.data.map(g=>'<div class="channel-card
 }catch(e){}
 }
 
-function showChat(){$("channelView").classList.add("hidden");$("chatView").classList.remove("hidden");$("adminView").classList.add("hidden");loadMsgs()}
+function showChat(){$("channelView").classList.add("hidden");$("chatView").classList.remove("hidden");$("adminView").classList.add("hidden");displayedMsgIds.clear();loadMsgs()}
 function leaveChat(){groupId=null;$("channelView").classList.remove("hidden");$("chatView").classList.add("hidden");loadMyChannels()}
 
 async function enterChannel(){
@@ -356,10 +357,22 @@ try{
 const d=await api("/api/messages/group/"+groupId);
 if(d.success){
 const el=$("msgs");
-el.innerHTML=d.data.map(m=>renderMessage(m)).join("");
+el.innerHTML="";
+displayedMsgIds.clear();
+d.data.forEach(m=>addMessage(m,false));
 el.scrollTop=el.scrollHeight;
 }
 }catch(e){}
+}
+
+function addMessage(m,scroll=true){
+// 去重检查
+if(displayedMsgIds.has(m.id))return;
+displayedMsgIds.add(m.id);
+
+const el=$("msgs");
+el.innerHTML+=renderMessage(m);
+if(scroll)el.scrollTop=el.scrollHeight;
 }
 
 function renderMessage(m){
@@ -378,7 +391,7 @@ contentHtml='<div class="msg-file"><div class="msg-file-icon"><svg width="16" he
 else{
 contentHtml=esc(m.content);
 }
-return'<div class="msg-row'+(isMe?" me":"")+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'</div></div></div>';
+return'<div class="msg-row'+(isMe?" me":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'</div></div></div>';
 }
 
 function send(){
@@ -403,7 +416,8 @@ try{
 const r=await fetch(API+"/api/messages/file/"+groupId,{method:"POST",headers:{"Authorization":"Bearer "+token},body:formData});
 const d=await r.json();
 if(d.success){
-ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content:d.data.content,msg_type:"image",file_name:d.data.fileName,file_size:d.data.fileSize}}));
+// 后端已广播消息，直接显示（乐观更新）
+addMessage(d.data);
 }else{alert(d.error||"上传失败")}
 }catch(err){alert("上传失败")}
 finally{hideUploadProgress()}
@@ -420,7 +434,8 @@ try{
 const r=await fetch(API+"/api/messages/file/"+groupId,{method:"POST",headers:{"Authorization":"Bearer "+token},body:formData});
 const d=await r.json();
 if(d.success){
-ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content:d.data.content,msg_type:"file",file_name:d.data.fileName,file_size:d.data.fileSize}}));
+// 后端已广播消息，直接显示（乐观更新）
+addMessage(d.data);
 }else{alert(d.error||"上传失败")}
 }catch(err){alert("上传失败")}
 finally{hideUploadProgress()}
@@ -472,9 +487,8 @@ if(m.data.senderId){
 onlineUsers.add(m.data.senderId);
 }
 if(m.data.groupId===groupId){
-const el=$("msgs");
-el.innerHTML+=renderMessage(m.data);
-el.scrollTop=el.scrollHeight;
+// 通过去重机制添加消息
+addMessage(m.data);
 }
 }
 }

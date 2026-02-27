@@ -5,11 +5,11 @@ use crate::{
     models::SendMessageRequest, 
     handlers::auth::get_claims_full, 
     utils::{check_permission, is_muted, check_rate_limit},
+    ws::WsMessage,
     AppState
 };
 
 const MAX_MSG_LEN: usize = 5000;
-const MAX_FILE_SIZE: usize = 5 * 1024 * 1024; // 5MB
 
 pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Json(req): Json<SendMessageRequest>) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
@@ -45,6 +45,24 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
     let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
         .bind(&claims.sub).fetch_optional(&state.db).await?
         .flatten();
+    
+    // 广播消息
+    let _ = state.tx.send(WsMessage { 
+        event: "message".into(), 
+        data: json!({
+            "id": id, 
+            "groupId": req.group_id, 
+            "senderId": claims.sub, 
+            "senderNickname": claims.nickname,
+            "senderAvatar": avatar, 
+            "content": req.content, 
+            "msgType": msg_type,
+            "fileName": req.file_name, 
+            "fileSize": req.file_size, 
+            "burnAfter": burn, 
+            "createdAt": now
+        })
+    });
     
     Ok(Json(json!({
         "success": true,
@@ -196,10 +214,29 @@ pub async fn upload_file(
             .bind(&claims.sub).fetch_optional(&state.db).await?
             .flatten();
         
+        // 直接广播消息 - 不需要前端再通过WebSocket发送
+        let _ = state.tx.send(WsMessage { 
+            event: "message".into(), 
+            data: json!({
+                "id": id, 
+                "groupId": group_id, 
+                "senderId": claims.sub, 
+                "senderNickname": claims.nickname,
+                "senderAvatar": avatar, 
+                "content": base64, 
+                "msgType": msg_type,
+                "fileName": file_name, 
+                "fileSize": data.len(), 
+                "burnAfter": 0, 
+                "createdAt": now
+            })
+        });
+        
         return Ok(Json(json!({
             "success": true,
             "data": {
                 "id": id,
+                "groupId": group_id,
                 "senderId": claims.sub,
                 "senderNickname": claims.nickname,
                 "senderAvatar": avatar,
