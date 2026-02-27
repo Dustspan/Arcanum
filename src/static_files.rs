@@ -948,6 +948,31 @@ if(Notification.permission==="granted"){
 new Notification("有人提及你",{body:m.data.mentionedBy+": "+m.data.content});
 }
 }
+if(m.event==="direct_message"){
+// 处理私聊消息
+if(m.data.senderId!==user.id){
+// 更新私聊徽章
+const badge=$("dmBadge");
+const count=parseInt(badge.textContent||"0")+1;
+badge.textContent=count;
+badge.classList.remove("hidden");
+// 显示通知
+if(Notification.permission==="granted"){
+new Notification("私聊消息",{body:m.data.senderNickname+": "+m.data.content.substring(0,50)});
+}
+}
+}
+if(m.event==="friend_request"){
+// 处理好友请求
+const badge=$("friendBadge");
+const count=parseInt(badge.textContent||"0")+1;
+badge.textContent=count;
+badge.classList.remove("hidden");
+// 显示通知
+if(Notification.permission==="granted"){
+new Notification("好友请求",{body:m.data.from+" 想添加你为好友"});
+}
+}
 }
 
 function updateReadCount(msgId,readCount){
@@ -1102,15 +1127,55 @@ html+='<hr style="border-color:var(--border);margin:12px 0">';
 html+='<input class="input" id="groupDescInput" placeholder="频道描述（最多200字）" value="'+esc(info.description||"")+'">';
 html+='<textarea class="input" id="groupAnnInput" placeholder="频道公告（最多500字）" style="margin-top:8px;height:60px">'+esc(info.announcement||"")+'</textarea>';
 html+='<button class="btn full" style="margin-top:8px" id="saveGroupInfoBtn">保存</button>';
+html+='<hr style="border-color:var(--border);margin:12px 0">';
+html+='<button class="btn full" id="createInviteBtn">创建邀请链接</button>';
+html+='<div id="inviteLinkDisplay" style="margin-top:8px;display:none"></div>';
 }
 html+='</div>';
 $("groupInfoContent").innerHTML=html;
 $("groupInfoModal").classList.remove("hidden");
 if(isOwner||isAdmin){
 $("saveGroupInfoBtn").onclick=saveGroupInfo;
+$("createInviteBtn").onclick=createInviteLink;
 }
 }
 }catch(e){}
+}
+
+async function createInviteLink(){
+if(!groupId)return;
+try{
+const d=await api("/api/groups/"+groupId+"/invite",{method:"POST"});
+if(d.success){
+const link=location.origin+"/invite/"+d.data.code;
+$("inviteLinkDisplay").innerHTML='<div style="padding:8px;background:var(--bg);border-radius:8px;font-size:12px;word-break:break-all">'+
+'<strong>邀请链接:</strong><br>'+link+'<br><button class="btn sm" style="margin-top:8px" onclick="navigator.clipboard.writeText(\''+link+'\');alert(\'已复制\')">复制</button>'+
+'</div>';
+$("inviteLinkDisplay").style.display="block";
+}else{alert(d.error||"创建失败")}
+}catch(e){alert("创建失败")}
+}
+
+// 处理邀请链接
+async function handleInviteLink(){
+const path=location.pathname;
+if(path.startsWith("/invite/")){
+const code=path.substring(8);
+try{
+const d=await api("/api/invite/"+code,{method:"POST"});
+if(d.success){
+alert("已加入频道: "+d.data.groupName);
+history.replaceState(null,"","/");
+loadMyChannels();
+}else{
+alert(d.error||"邀请链接无效");
+history.replaceState(null,"","/");
+}
+}catch(e){
+alert("加入失败");
+history.replaceState(null,"","/");
+}
+}
 }
 
 async function saveGroupInfo(){
@@ -1460,6 +1525,9 @@ else{statusEl.textContent="离线";statusEl.className="user-menu-status offline"
 }else statusEl.textContent="";
 let actionsHtml="";
 if(!isSelf){
+// 添加好友按钮（对所有用户显示）
+actionsHtml+='<button class="user-menu-item" data-act="menuAddFriend">添加好友</button>';
+actionsHtml+='<button class="user-menu-item" data-act="menuDirectChat">私聊</button>';
 if(hasPerm("user_mute"))actionsHtml+='<button class="user-menu-item warn" data-act="menuMute">禁言</button>';
 if(hasPerm("user_mute"))actionsHtml+='<button class="user-menu-item" data-act="menuUnmute">解除禁言</button>';
 if(hasPerm("user_kick"))actionsHtml+='<button class="user-menu-item warn" data-act="menuKick">踢出</button>';
@@ -1523,6 +1591,8 @@ if(act==="menuUnmute"){closeUserMenu();if(menuTargetUser){await api("/api/admin/
 if(act==="menuKick"){closeUserMenu();if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/kick",{method:"PUT"});alert("已踢出")}}
 if(act==="menuBan"){closeUserMenu();if(menuTargetUser&&confirm("确定封禁该用户?")){await api("/api/admin/users/"+menuTargetUser.uid+"/ban",{method:"PUT"});alert("已封禁")}}
 if(act==="menuGrant"){closeUserMenu();if(menuTargetUser)openPermModal(menuTargetUser.uid,menuTargetUser.nick)}
+if(act==="menuAddFriend"){closeUserMenu();if(menuTargetUser)addFriendFromMenu(menuTargetUser.userId)}
+if(act==="menuDirectChat"){closeUserMenu();if(menuTargetUser)openDirectChat(menuTargetUser.userId,menuTargetUser.nick)}
 if(t.closest(".channel-card")){const gid=t.closest(".channel-card").dataset.gid;if(gid){groupId=gid;showChat()}}
 if(t.classList.contains("mute-option")){selectedMuteDuration=parseInt(t.dataset.duration);document.querySelectorAll(".mute-option").forEach(el=>el.classList.remove("on"));t.classList.add("on")}
 if(t.classList.contains("admin-tab"))adminTab(t.dataset.tab);
@@ -1543,7 +1613,7 @@ initTheme();
 typeWriter($("logoText"),"ARCANUM",0);
 typeWriter($("logoText2"),"ARCANUM",0);
 const t=localStorage.getItem("t"),u=localStorage.getItem("u");
-if(t&&u){try{token=t;user=JSON.parse(u);showMain()}catch(e){localStorage.clear()}}
+if(t&&u){try{token=t;user=JSON.parse(u);showMain();handleInviteLink()}catch(e){localStorage.clear()}}
 $("loginBtn").onclick=login;
 $("themeToggle").onclick=toggleTheme;
 $("loginPwd").onkeydown=function(e){if(e.key==="Enter")login()};

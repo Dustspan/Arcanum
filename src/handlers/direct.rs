@@ -90,8 +90,8 @@ pub async fn get_direct_messages(
 ) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
     
-    let messages: Vec<(String, String, String, String, String, Option<String>, i64, i64, String)> = sqlx::query_as(r#"
-        SELECT dm.id, dm.sender_id, u.nickname, dm.content, dm.type, dm.file_name, dm.file_size, dm.read, dm.created_at
+    let messages: Vec<(String, String, String, Option<String>, String, String, Option<String>, i64, i64, String)> = sqlx::query_as(r#"
+        SELECT dm.id, dm.sender_id, u.nickname, u.avatar, dm.content, dm.type, dm.file_name, dm.file_size, dm.read, dm.created_at
         FROM direct_messages dm
         JOIN users u ON dm.sender_id = u.id
         WHERE (dm.sender_id = ? AND dm.receiver_id = ?) OR (dm.sender_id = ? AND dm.receiver_id = ?)
@@ -115,12 +115,13 @@ pub async fn get_direct_messages(
             "id": m.0,
             "senderId": m.1,
             "senderNickname": m.2,
-            "content": m.3,
-            "msgType": m.4,
-            "fileName": m.5,
-            "fileSize": m.6,
-            "read": m.7 == 1,
-            "createdAt": m.8
+            "senderAvatar": m.3,
+            "content": m.4,
+            "msgType": m.5,
+            "fileName": m.6,
+            "fileSize": m.7,
+            "read": m.8 == 1,
+            "createdAt": m.9
         })).collect::<Vec<_>>()
     })))
 }
