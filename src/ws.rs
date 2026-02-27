@@ -50,6 +50,70 @@ async fn handle(socket: WebSocket, state: AppState, claims: Claims) {
     
     tracing::info!("WS connected: {}", nickname);
     
+    // 推送离线私聊消息
+    let offline_messages: Vec<(String, String, String, String, Option<String>, Option<String>, Option<i64>, String)> = match sqlx::query_as(
+        "SELECT id, sender_id, receiver_id, content, type, file_name, file_size, created_at FROM direct_messages WHERE receiver_id = ? AND read = 0 ORDER BY created_at ASC"
+    )
+    .bind(&user_id)
+    .fetch_all(&state.db)
+    .await
+    {
+        Ok(msgs) => msgs,
+        Err(_) => Vec::new(),
+    };
+    
+    if !offline_messages.is_empty() {
+        let msg_count = offline_messages.len();
+        
+        // 标记为已读
+        let _ = sqlx::query("UPDATE direct_messages SET read = 1 WHERE receiver_id = ? AND read = 0")
+            .bind(&user_id)
+            .execute(&state.db)
+            .await;
+        
+        // 推送离线消息
+        for msg in &offline_messages {
+            // 获取发送者信息
+            let sender_nickname: Option<String> = sqlx::query_scalar("SELECT nickname FROM users WHERE id = ?")
+                .bind(&msg.1)
+                .fetch_optional(&state.db)
+                .await
+                .ok()
+                .flatten();
+            
+            let sender_avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
+                .bind(&msg.1)
+                .fetch_optional(&state.db)
+                .await
+                .ok()
+                .flatten();
+            
+            let offline_msg = WsMessage {
+                event: "direct_message".into(),
+                data: serde_json::json!({
+                    "id": msg.0,
+                    "senderId": msg.1,
+                    "senderNickname": sender_nickname,
+                    "senderAvatar": sender_avatar,
+                    "receiverId": msg.2,
+                    "content": msg.3,
+                    "msgType": msg.4,
+                    "fileName": msg.5,
+                    "fileSize": msg.6,
+                    "createdAt": msg.7,
+                    "offline": true
+                })
+            };
+            
+            let mut s = sender.lock().await;
+            if let Ok(json) = serde_json::to_string(&offline_msg) {
+                let _ = s.send(Message::Text(json)).await;
+            }
+        }
+        
+        tracing::info!("Pushed {} offline messages to {}", msg_count, nickname);
+    }
+    
     // 获取用户加入的频道列表
     let groups: Vec<String> = match sqlx::query_scalar(
         "SELECT group_id FROM group_members WHERE user_id = ?"

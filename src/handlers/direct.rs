@@ -7,7 +7,11 @@ use crate::{
     AppState
 };
 
-/// 发送私聊消息 - 不保存到数据库，仅通过WebSocket实时传递
+// 离线消息限制
+const MAX_OFFLINE_MESSAGES_PER_USER: i64 = 100;
+const OFFLINE_MESSAGE_EXPIRE_DAYS: i64 = 7;
+
+/// 发送私聊消息
 pub async fn send_direct_message(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -20,19 +24,23 @@ pub async fn send_direct_message(
         return Err(crate::error::AppError::BadRequest("消息内容无效".to_string()));
     }
     
-    // 检查接收者是否存在
-    let receiver: Option<String> = sqlx::query_scalar("SELECT id FROM users WHERE id = ?")
-        .bind(&receiver_id)
-        .fetch_optional(&state.db)
-        .await?;
+    // 检查接收者是否存在并获取在线状态
+    let receiver_info: Option<(String, i64)> = sqlx::query_as(
+        "SELECT id, online FROM users WHERE id = ?"
+    )
+    .bind(&receiver_id)
+    .fetch_optional(&state.db)
+    .await?;
     
-    if receiver.is_none() {
+    if receiver_info.is_none() {
         return Err(crate::error::AppError::BadRequest("用户不存在".to_string()));
     }
     
+    let (receiver_id, is_online) = receiver_info.unwrap();
+    
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
-    let msg_type = req.msg_type.unwrap_or_else(|| "text".to_string());
+    let msg_type = req.msg_type.clone().unwrap_or_else(|| "text".to_string());
     
     let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
         .bind(&claims.sub)
@@ -40,41 +48,70 @@ pub async fn send_direct_message(
         .await?
         .flatten();
     
-    // 发送给接收者
-    let _ = state.broadcast.broadcast_to_user(
-        &receiver_id, WsMessage {
-        event: "direct_message".into(),
-        data: json!({
-            "id": id,
-            "senderId": claims.sub,
-            "senderNickname": claims.nickname,
-            "senderAvatar": avatar,
-            "receiverId": receiver_id,
-            "content": req.content,
-            "msgType": msg_type,
-            "fileName": req.file_name,
-            "fileSize": req.file_size,
-            "createdAt": now
-        })
+    let msg_data = json!({
+        "id": id,
+        "senderId": claims.sub,
+        "senderNickname": claims.nickname,
+        "senderAvatar": avatar,
+        "receiverId": receiver_id,
+        "content": req.content,
+        "msgType": msg_type,
+        "fileName": req.file_name,
+        "fileSize": req.file_size,
+        "createdAt": now
     });
+    
+    if is_online == 1 {
+        // 接收者在线，直接推送
+        let _ = state.broadcast.broadcast_to_user(
+            &receiver_id, WsMessage {
+                event: "direct_message".into(),
+                data: msg_data.clone()
+            }
+        );
+    } else {
+        // 接收者离线，存储消息
+        // 先检查离线消息数量限制
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM direct_messages WHERE receiver_id = ? AND read = 0"
+        )
+        .bind(&receiver_id)
+        .fetch_one(&state.db)
+        .await?;
+        
+        if count >= MAX_OFFLINE_MESSAGES_PER_USER {
+            // 清理最旧的消息
+            sqlx::query(
+                "DELETE FROM direct_messages WHERE receiver_id = ? AND read = 0 ORDER BY created_at ASC LIMIT 10"
+            )
+            .bind(&receiver_id)
+            .execute(&state.db)
+            .await?;
+        }
+        
+        // 存储离线消息
+        sqlx::query(
+            "INSERT INTO direct_messages (id, sender_id, receiver_id, content, type, file_name, file_size, read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)"
+        )
+        .bind(&id)
+        .bind(&claims.sub)
+        .bind(&receiver_id)
+        .bind(&req.content)
+        .bind(&msg_type)
+        .bind(&req.file_name)
+        .bind(req.file_size.unwrap_or(0))
+        .bind(&now)
+        .execute(&state.db)
+        .await?;
+    }
     
     // 同时发回给发送者（用于多设备同步）
     let _ = state.broadcast.broadcast_to_user(
         &claims.sub, WsMessage {
-        event: "direct_message".into(),
-        data: json!({
-            "id": id,
-            "senderId": claims.sub,
-            "senderNickname": claims.nickname,
-            "senderAvatar": avatar,
-            "receiverId": receiver_id,
-            "content": req.content,
-            "msgType": msg_type,
-            "fileName": req.file_name,
-            "fileSize": req.file_size,
-            "createdAt": now
-        })
-    });
+            event: "direct_message".into(),
+            data: msg_data
+        }
+    );
     
     Ok(Json(json!({
         "success": true,
@@ -83,7 +120,8 @@ pub async fn send_direct_message(
             "receiverId": receiver_id,
             "content": req.content,
             "msgType": msg_type,
-            "createdAt": now
+            "createdAt": now,
+            "delivered": is_online == 1
         }
     })))
 }
@@ -96,33 +134,104 @@ pub struct DirectMessageRequest {
     pub file_size: Option<i64>,
 }
 
-/// 获取私聊消息列表 - 返回空列表（不保存历史）
+/// 获取离线消息并在获取后标记为已读
 pub async fn get_direct_messages(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(_user_id): Path<String>
+    Path(user_id): Path<String>
 ) -> Result<Json<serde_json::Value>> {
-    let _claims = get_claims_full(&headers, &state).await?;
+    let claims = get_claims_full(&headers, &state).await?;
     
-    // 不保存历史，返回空列表
+    // 只能查看自己相关的消息
+    if user_id != claims.sub {
+        return Err(crate::error::AppError::Forbidden);
+    }
+    
+    // 获取未读消息
+    let messages: Vec<(String, String, String, Option<String>, String, String, Option<String>, Option<i64>, String)> = sqlx::query_as(r#"
+        SELECT id, sender_id, receiver_id, content, type, file_name, file_size, created_at
+        FROM direct_messages 
+        WHERE receiver_id = ? AND read = 0
+        ORDER BY created_at ASC
+    "#)
+    .bind(&claims.sub)
+    .fetch_all(&state.db)
+    .await?;
+    
+    // 标记为已读
+    if !messages.is_empty() {
+        sqlx::query("UPDATE direct_messages SET read = 1 WHERE receiver_id = ? AND read = 0")
+            .bind(&claims.sub)
+            .execute(&state.db)
+            .await?;
+    }
+    
+    // 获取发送者信息
+    let mut result = Vec::new();
+    for msg in messages {
+        let sender_nickname: Option<String> = sqlx::query_scalar("SELECT nickname FROM users WHERE id = ?")
+            .bind(&msg.1)
+            .fetch_optional(&state.db)
+            .await?
+            .flatten();
+        
+        let sender_avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
+            .bind(&msg.1)
+            .fetch_optional(&state.db)
+            .await?
+            .flatten();
+        
+        result.push(json!({
+            "id": msg.0,
+            "senderId": msg.1,
+            "senderNickname": sender_nickname,
+            "senderAvatar": sender_avatar,
+            "receiverId": msg.2,
+            "content": msg.3,
+            "msgType": msg.4,
+            "fileName": msg.5,
+            "fileSize": msg.6,
+            "createdAt": msg.8
+        }));
+    }
+    
     Ok(Json(json!({
         "success": true,
-        "data": [],
-        "message": "私聊消息不保存历史记录"
+        "data": result
     })))
 }
 
-/// 获取私聊会话列表 - 返回空列表（不保存历史）
+/// 获取私聊会话列表
 pub async fn get_conversations(
     State(state): State<AppState>,
     headers: HeaderMap
 ) -> Result<Json<serde_json::Value>> {
-    let _claims = get_claims_full(&headers, &state).await?;
+    let claims = get_claims_full(&headers, &state).await?;
     
-    // 不保存历史，返回空列表
+    // 获取有消息往来的用户
+    let conversations: Vec<(String, String, Option<String>, i64, String)> = sqlx::query_as(r#"
+        SELECT u.id, u.nickname, u.avatar, u.online, MAX(dm.created_at) as last_msg_time
+        FROM direct_messages dm
+        JOIN users u ON (u.id = dm.sender_id OR u.id = dm.receiver_id)
+        WHERE (dm.sender_id = ? OR dm.receiver_id = ?) AND u.id != ?
+        GROUP BY u.id
+        ORDER BY last_msg_time DESC
+    "#)
+    .bind(&claims.sub)
+    .bind(&claims.sub)
+    .bind(&claims.sub)
+    .fetch_all(&state.db)
+    .await?;
+    
     Ok(Json(json!({
         "success": true,
-        "data": []
+        "data": conversations.iter().map(|c| json!({
+            "userId": c.0,
+            "nickname": c.1,
+            "avatar": c.2,
+            "online": c.3 == 1,
+            "lastMessageTime": c.4
+        })).collect::<Vec<_>>()
     })))
 }
 
@@ -170,12 +279,13 @@ pub async fn add_friend(
     // 通知对方
     let _ = state.broadcast.broadcast_to_user(
         &friend_id, WsMessage {
-        event: "friend_request".into(),
-        data: json!({
-            "from": claims.nickname,
-            "fromId": claims.sub
-        })
-    });
+            event: "friend_request".into(),
+            data: json!({
+                "from": claims.nickname,
+                "fromId": claims.sub
+            })
+        }
+    );
     
     Ok(Json(json!({"success": true, "message": "好友请求已发送"})))
 }
@@ -262,4 +372,16 @@ pub async fn get_friend_requests(
             "avatar": r.3
         })).collect::<Vec<_>>()
     })))
+}
+
+/// 清理过期的离线消息（可由定时任务调用）
+pub async fn cleanup_expired_messages(pool: &sqlx::SqlitePool) -> anyhow::Result<()> {
+    let expire_date = chrono::Utc::now() - chrono::Duration::days(OFFLINE_MESSAGE_EXPIRE_DAYS);
+    
+    sqlx::query("DELETE FROM direct_messages WHERE created_at < ? AND read = 1")
+        .bind(expire_date.to_rfc3339())
+        .execute(pool)
+        .await?;
+    
+    Ok(())
 }
