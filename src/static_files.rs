@@ -59,6 +59,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right}
 .msg-bubble.out .msg-time{color:rgba(0,0,0,.4)}
 .msg-read{margin-left:8px;color:var(--accent)}
+.msg-reply{padding:4px 8px;margin-bottom:4px;background:rgba(0,0,0,.1);border-left:2px solid var(--accent);border-radius:4px;font-size:11px;cursor:pointer}
+.msg-reply:hover{background:rgba(0,0,0,.2)}
+.msg-reply-nick{color:var(--accent);font-weight:500;margin-right:8px}
+.msg-reply-content{color:var(--muted)}
+.msg-highlight{animation:highlight 2s}
+@keyframes highlight{0%,100%{background:transparent}50%{background:rgba(0,255,255,.2)}}
+.reply-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:10px;opacity:.5}
+.reply-btn:hover{opacity:1;color:var(--accent)}
+.reply-preview{padding:8px 12px;background:var(--card);border-bottom:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.reply-preview b{color:var(--accent)}
 .typing-indicator{padding:4px 12px;font-size:11px;color:var(--muted);font-style:italic}
 .group-announcement{padding:8px 12px;background:rgba(0,255,255,.1);border-bottom:1px solid var(--border);font-size:12px;color:var(--accent);cursor:pointer}
 .group-announcement:hover{background:rgba(0,255,255,.15)}
@@ -177,6 +187,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div class="group-announcement hidden" id="groupAnnouncement"></div>
 <div class="chat-msgs" id="msgs"></div>
 <div class="typing-indicator hidden" id="typingIndicator"></div>
+<div class="reply-preview hidden" id="replyPreview"><span></span><button onclick="cancelReply()">✕</button></div>
 <div class="chat-input">
 <textarea id="msgInput" rows="1" placeholder="消息..."></textarea>
 <div class="chat-actions">
@@ -477,9 +488,41 @@ let contentHtml="";
 if(m.msgType==="image")contentHtml='<img class="msg-image" src="'+m.content+'" onclick="window.open(\''+m.content+'\',\'_blank\')" loading="lazy">';
 else if(m.msgType==="file"){const size=formatFileSize(m.fileSize);contentHtml='<div class="msg-file"><div class="msg-file-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div class="msg-file-info"><div class="msg-file-name">'+esc(m.fileName||"文件")+'</div><div class="msg-file-size">'+size+'</div></div></div>';}
 else contentHtml=esc(m.content);
+// 引用消息
+let replyHtml="";
+if(m.replyTo&&m.replyInfo){
+replyHtml='<div class="msg-reply" onclick="scrollToMsg(\''+m.replyTo+'\')"><span class="msg-reply-nick">'+esc(m.replyInfo.senderNickname)+'</span><span class="msg-reply-content">'+esc(m.replyInfo.content.substring(0,50))+(m.replyInfo.content.length>50?"...":"")+'</span></div>';
+}
 // 添加双击撤回功能（仅限自己发送的消息）
 const recallAttr=isMe?' ondblclick="recallMessage(\''+m.id+'\')" title="双击撤回"':"";
-return'<div class="msg-row'+(isMe?" me":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"'+recallAttr+'><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'</div></div></div>';
+return'<div class="msg-row'+(isMe?" me":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"'+recallAttr+'><div class="msg-nick">'+esc(m.senderNickname)+'</div>'+replyHtml+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'<button class="reply-btn" onclick="setReply(\''+m.id+'\',\''+esc(m.senderNickname)+'\',\''+esc(m.content.substring(0,30))+'\')">↩</button></div></div></div>';
+}
+
+let replyTo=null;
+let replyNick=null;
+
+function setReply(msgId,nick,content){
+replyTo=msgId;
+replyNick=nick;
+$("replyPreview").innerHTML='回复 <b>'+esc(nick)+'</b>: '+esc(content.substring(0,30))+(content.length>30?"...":"");
+$("replyPreview").classList.remove("hidden");
+$("msgInput").focus();
+}
+
+function cancelReply(){
+replyTo=null;
+replyNick=null;
+$("replyPreview").classList.add("hidden");
+}
+
+function scrollToMsg(msgId){
+const el=$("msgs");
+const msgEl=el.querySelector('[data-mid="'+msgId+'"]');
+if(msgEl){
+msgEl.scrollIntoView({behavior:"smooth",block:"center"});
+msgEl.classList.add("msg-highlight");
+setTimeout(()=>msgEl.classList.remove("msg-highlight"),2000);
+}
 }
 
 async function recallMessage(msgId){
@@ -500,9 +543,10 @@ const now=Date.now();if(now-lastSend<300)return;lastSend=now;
 const input=$("msgInput");const content=input.value.trim();
 if(!content||!ws)return;
 if(content.length>5000){alert("消息太长");return}
-ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content}}));
+ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content,reply_to:replyTo}}));
 input.value="";input.style.height="auto";
 clearTyping();
+cancelReply();
 }
 
 // 输入状态

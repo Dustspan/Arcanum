@@ -9,4 +9,5 @@ pub struct SendMessageRequest {
     pub msg_type: Option<String>,
     pub file_name: Option<String>,
     pub file_size: Option<i64>,
+    pub reply_to: Option<String>,  // 引用消息ID
 }

@@ -200,6 +200,7 @@ async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMess
         msg_type: Option<String>,
         file_name: Option<String>,
         file_size: Option<i64>,
+        reply_to: Option<String>,
     }
     
     let Ok(d) = serde_json::from_value::<MsgData>(msg.data) else { return };
@@ -221,14 +222,27 @@ async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMess
     let now = chrono::Utc::now().to_rfc3339();
     let burn = d.burn_after.unwrap_or(0);
     let msg_type = d.msg_type.unwrap_or_else(|| "text".to_string());
+    let reply_to = d.reply_to.clone();
     
-    if sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, file_name, file_size, burn_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    if sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, file_name, file_size, burn_after, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(&id).bind(user_id).bind(&d.group_id).bind(&d.content).bind(&msg_type)
-        .bind(&d.file_name).bind(d.file_size.unwrap_or(0)).bind(burn).bind(&now)
+        .bind(&d.file_name).bind(d.file_size.unwrap_or(0)).bind(burn).bind(&reply_to).bind(&now)
         .execute(&state.db).await.is_ok() {
         
         let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
             .bind(user_id).fetch_optional(&state.db).await.ok().flatten();
+        
+        // 获取引用消息的信息
+        let reply_info: Option<(String, String)> = if let Some(ref_msg_id) = &reply_to {
+            sqlx::query_as("SELECT m.content, u.nickname FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.id = ?")
+                .bind(ref_msg_id)
+                .fetch_optional(&state.db)
+                .await
+                .ok()
+                .flatten()
+        } else {
+            None
+        };
         
         let _ = state.broadcast.broadcast_to_group(&d.group_id, WsMessage { 
             event: "message".into(), 
@@ -242,7 +256,12 @@ async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMess
                 "msgType": msg_type,
                 "fileName": d.file_name, 
                 "fileSize": d.file_size, 
-                "burnAfter": burn, 
+                "burnAfter": burn,
+                "replyTo": reply_to,
+                "replyInfo": reply_info.as_ref().map(|(content, nick)| serde_json::json!({
+                    "content": content,
+                    "senderNickname": nick
+                })),
                 "createdAt": now
             })
         });

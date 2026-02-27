@@ -33,15 +33,28 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
     let now = chrono::Utc::now().to_rfc3339();
     let burn = req.burn_after.unwrap_or(0);
     let msg_type = req.msg_type.unwrap_or_else(|| "text".to_string());
+    let reply_to = req.reply_to.clone();
     
-    sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, file_name, file_size, burn_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, file_name, file_size, burn_after, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(&id).bind(&claims.sub).bind(&req.group_id).bind(&req.content).bind(&msg_type)
-        .bind(&req.file_name).bind(req.file_size.unwrap_or(0)).bind(burn).bind(&now)
+        .bind(&req.file_name).bind(req.file_size.unwrap_or(0)).bind(burn).bind(&reply_to).bind(&now)
         .execute(&state.db).await?;
     
     let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
         .bind(&claims.sub).fetch_optional(&state.db).await?
         .flatten();
+    
+    // 获取引用消息的信息
+    let reply_info: Option<(String, String, String)> = if let Some(ref_msg_id) = &reply_to {
+        sqlx::query_as("SELECT m.content, u.nickname, m.sender_id FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.id = ?")
+            .bind(ref_msg_id)
+            .fetch_optional(&state.db)
+            .await
+            .ok()
+            .flatten()
+    } else {
+        None
+    };
     
     let _ = state.broadcast.broadcast_to_group(&req.group_id, WsMessage { 
         event: "message".into(), 
@@ -55,7 +68,13 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
             "msgType": msg_type,
             "fileName": req.file_name, 
             "fileSize": req.file_size, 
-            "burnAfter": burn, 
+            "burnAfter": burn,
+            "replyTo": reply_to,
+            "replyInfo": reply_info.as_ref().map(|r| json!({
+                "content": r.0,
+                "senderNickname": r.1,
+                "senderId": r.2
+            })),
             "createdAt": now
         })
     });
@@ -72,6 +91,7 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
             "fileName": req.file_name,
             "fileSize": req.file_size,
             "burnAfter": burn,
+            "replyTo": reply_to,
             "createdAt": now
         }
     })))
@@ -100,11 +120,11 @@ pub async fn get_messages(
     
     let limit = pagination.limit.unwrap_or(50).min(100);
     
-    let messages: Vec<(String, String, String, String, String, Option<String>, i64, i64, String, Option<String>)> = 
+    let messages: Vec<(String, String, String, String, String, Option<String>, i64, i64, Option<String>, String, Option<String>)> = 
         if let Some(before) = &pagination.before {
             // 分页查询：加载指定时间之前的消息
             sqlx::query_as(r#"
-                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.created_at, u.avatar
+                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.reply_to, m.created_at, u.avatar
                 FROM messages m 
                 JOIN users u ON m.sender_id = u.id 
                 WHERE m.group_id = ? AND m.created_at < ?
@@ -116,7 +136,7 @@ pub async fn get_messages(
         } else {
             // 初始加载：获取最新的消息
             sqlx::query_as(r#"
-                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.created_at, u.avatar
+                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.reply_to, m.created_at, u.avatar
                 FROM messages m 
                 JOIN users u ON m.sender_id = u.id 
                 WHERE m.group_id = ? 
@@ -139,25 +159,56 @@ pub async fn get_messages(
     
     let has_more = messages.len() as i64 == limit && (messages.len() as i64) < total;
     
+    // 获取引用消息的信息
+    let reply_ids: Vec<String> = messages.iter()
+        .filter_map(|m| m.8.clone())
+        .collect();
+    
+    let reply_infos: std::collections::HashMap<String, (String, String)> = if !reply_ids.is_empty() {
+        let placeholders = reply_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let query = format!(
+            "SELECT m.id, m.content, u.nickname FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.id IN ({})",
+            placeholders
+        );
+        let mut q = sqlx::query_as::<_, (String, String, String)>(&query);
+        for id in &reply_ids {
+            q = q.bind(id);
+        }
+        q.fetch_all(&state.db)
+            .await
+            .map(|rows| rows.into_iter().map(|r| (r.0, (r.1, r.2))).collect())
+            .unwrap_or_default()
+    } else {
+        std::collections::HashMap::new()
+    };
+    
     Ok(Json(json!({
         "success": true,
-        "data": messages.iter().map(|m| json!({
-            "id": m.0,
-            "senderId": m.1,
-            "senderNickname": m.2,
-            "senderAvatar": m.9,
-            "content": m.3,
-            "msgType": m.4,
-            "fileName": m.5,
-            "fileSize": m.6,
-            "burnAfter": m.7,
-            "createdAt": m.8
-        })).collect::<Vec<_>>(),
+        "data": messages.iter().map(|m| {
+            let reply_info = m.8.as_ref().and_then(|id| reply_infos.get(id)).map(|(content, nick)| json!({
+                "content": content,
+                "senderNickname": nick
+            }));
+            json!({
+                "id": m.0,
+                "senderId": m.1,
+                "senderNickname": m.2,
+                "senderAvatar": m.10,
+                "content": m.3,
+                "msgType": m.4,
+                "fileName": m.5,
+                "fileSize": m.6,
+                "burnAfter": m.7,
+                "replyTo": m.8,
+                "replyInfo": reply_info,
+                "createdAt": m.9
+            })
+        }).collect::<Vec<_>>(),
         "pagination": {
             "total": total,
             "hasMore": has_more,
-            "oldestCreatedAt": messages.first().map(|m| m.8.clone()),
-            "newestCreatedAt": messages.last().map(|m| m.8.clone())
+            "oldestCreatedAt": messages.first().map(|m| m.9.clone()),
+            "newestCreatedAt": messages.last().map(|m| m.9.clone())
         }
     })))
 }
