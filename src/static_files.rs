@@ -28,6 +28,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .btn.danger:hover{background:var(--error);color:#fff}
 .btn.warn{border-color:var(--warn);color:var(--warn)}
 .btn.warn:hover{background:var(--warn);color:#000}
+.btn.success{border-color:var(--success);color:var(--success)}
+.btn.success:hover{background:var(--success);color:#000}
 .err{color:var(--error);font-size:12px;margin:8px 0;text-align:center}
 .success{color:var(--success);font-size:12px;margin:8px 0}
 .status{position:fixed;top:8px;right:8px;padding:4px 10px;font-size:10px;border:1px solid var(--border);border-radius:12px;z-index:100}
@@ -52,7 +54,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .msg-bubble.out .msg-nick{color:rgba(0,0,0,.5)}
 .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right}
 .msg-bubble.out .msg-time{color:rgba(0,0,0,.4)}
-.msg-image{max-width:100%;border-radius:8px;margin-top:4px;cursor:pointer}
+.msg-image{max-width:100%;max-height:300px;border-radius:8px;cursor:pointer;display:block}
 .msg-file{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;margin-top:4px}
 .msg-file-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center}
 .msg-file-info{flex:1}
@@ -86,9 +88,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .item-card .item-actions{display:flex;gap:4px;flex-wrap:wrap}
 .item-card .item-actions button{flex:1;min-width:50px}
 .empty{text-align:center;color:var(--muted);font-size:13px;padding:24px}
-.avatar-upload{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.avatar-preview{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#000;overflow:hidden}
-.avatar-preview img{width:100%;height:100%;object-fit:cover}
 .user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;z-index:1000;min-width:160px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
 .user-menu-header{padding:8px;border-bottom:1px solid var(--border);margin-bottom:8px}
 .user-menu-header h4{font-size:14px;font-weight:500}
@@ -104,7 +103,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .modal-header h3{font-size:16px;font-weight:500}
 .modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
-.permission-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.permission-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:300px;overflow-y:auto}
 .permission-item{padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
 .permission-item label{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer}
 .permission-item input{accent-color:var(--accent)}
@@ -112,6 +111,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .mute-option{padding:6px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer}
 .mute-option:hover{border-color:var(--accent)}
 .mute-option.on{border-color:var(--accent);color:var(--accent)}
+.upload-progress{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--accent);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--accent);z-index:1000}
+.loading-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--accent);border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
 @media(min-width:540px){.container{padding:16px}}
 </style>
 </head>
@@ -152,11 +154,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div class="chat-input">
 <textarea id="msgInput" rows="1" placeholder="消息..." onkeydown="handleKey(event)"></textarea>
 <div class="chat-actions">
-<label class="chat-action-btn" title="上传图片">
+<label class="chat-action-btn" title="上传图片" id="imageUploadBtn">
 <input type="file" accept="image/*" id="imageInput" style="display:none" onchange="uploadImage(event)">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
 </label>
-<label class="chat-action-btn" title="上传文件">
+<label class="chat-action-btn" title="上传文件" id="fileUploadBtn">
 <input type="file" accept=".txt" id="fileInput" style="display:none" onchange="uploadFile(event)">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3-3 3 3"/></svg>
 </label>
@@ -171,7 +173,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div class="admin-tab on" onclick="adminTab('users')">用户</div>
 <div class="admin-tab" onclick="adminTab('groups')">频道</div>
 <div class="admin-tab" onclick="adminTab('ips')">IP</div>
-<div class="admin-tab hidden" id="permsTab" onclick="adminTab('perms')">权限</div>
 </div>
 
 <div id="usersSection" class="admin-section on">
@@ -207,13 +208,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 </div>
 
-<div id="permsSection" class="admin-section">
-<div class="card">
-<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">权限列表</h3>
-<div id="permsList"></div>
-</div>
-</div>
-
 <button class="btn full" onclick="showChannel()" style="margin-top:12px">返回频道</button>
 </div>
 </div>
@@ -227,19 +221,20 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <button class="user-menu-item" id="menuUnmuteBtn" onclick="menuUnmute()">解除禁言</button>
 <button class="user-menu-item warn" onclick="menuKick()">踢出</button>
 <button class="user-menu-item danger" onclick="menuBan()">封禁</button>
-<button class="user-menu-item" onclick="menuGrant()">授予权限</button>
+<button class="user-menu-item" id="menuPermBtn" onclick="menuGrant()">管理权限</button>
 <button class="user-menu-item" onclick="closeUserMenu()">取消</button>
 </div>
 
 <div class="modal-overlay hidden" id="permModal" onclick="if(event.target===this)closePermModal()">
 <div class="modal">
 <div class="modal-header">
-<h3>授予权限</h3>
+<h3>管理用户权限</h3>
 <button class="modal-close" onclick="closePermModal()">×</button>
 </div>
-<p style="font-size:12px;color:var(--muted);margin-bottom:12px">用户: <span id="permUserName"></span></p>
+<p style="font-size:12px;color:var(--muted);margin-bottom:8px">用户: <span id="permUserName" style="color:var(--accent)"></span></p>
+<p style="font-size:11px;color:var(--muted);margin-bottom:12px">提示: 勾选权限后点击保存即可授权，取消勾选可撤销权限</p>
 <div class="permission-grid" id="permGrid"></div>
-<button class="btn full" style="margin-top:12px" onclick="savePermissions()">保存</button>
+<button class="btn full success" style="margin-top:12px" onclick="savePermissions()">保存权限</button>
 </div>
 </div>
 
@@ -249,7 +244,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <h3>禁言用户</h3>
 <button class="modal-close" onclick="closeMuteModal()">×</button>
 </div>
-<p style="font-size:12px;color:var(--muted);margin-bottom:12px">用户: <span id="muteUserName"></span></p>
+<p style="font-size:12px;color:var(--muted);margin-bottom:12px">用户: <span id="muteUserName" style="color:var(--accent)"></span></p>
 <div class="mute-options">
 <div class="mute-option" onclick="selectMuteDuration(5)">5分钟</div>
 <div class="mute-option" onclick="selectMuteDuration(30)">30分钟</div>
@@ -261,11 +256,14 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 </div>
 
+<div class="upload-progress hidden" id="uploadProgress"><span class="loading-spinner"></span>上传中...</div>
+
 <script>
 let token="",user=null,ws=null,groupId=null,lastSend=0;
 let menuTargetUser=null;
 let selectedMuteDuration=30;
 let allPermissions=[];
+let userPermissions={};
 const API=location.origin;
 
 function debounce(fn,delay){let t;return function(...args){clearTimeout(t);t=setTimeout(()=>fn.apply(this,args),delay)}}
@@ -334,13 +332,16 @@ el.scrollTop=el.scrollHeight;
 function renderMessage(m){
 const isMe=m.senderId===user.id;
 const avatarHtml=m.senderAvatar?"<img src=\""+m.senderAvatar+"\" alt=\"\">":m.senderNickname.charAt(0).toUpperCase();
-let contentHtml=esc(m.content);
+let contentHtml="";
 if(m.msgType==="image"){
-contentHtml+="<img class=\"msg-image\" src=\""+m.content+"\" onclick=\"viewImage('"+esc(m.content)+"')\">";
+contentHtml="<img class=\"msg-image\" src=\""+m.content+"\" onclick=\"viewImage('"+m.content+"')\" loading=\"lazy\">";
 }
 else if(m.msgType==="file"){
 const size=formatFileSize(m.fileSize);
-contentHtml+="<div class=\"msg-file\"><div class=\"msg-file-icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"#000\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/></svg></div><div class=\"msg-file-info\"><div class=\"msg-file-name\">"+esc(m.fileName||"文件")+"</div><div class=\"msg-file-size\">"+size+"</div></div></div>";
+contentHtml="<div class=\"msg-file\"><div class=\"msg-file-icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"#000\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/></svg></div><div class=\"msg-file-info\"><div class=\"msg-file-name\">"+esc(m.fileName||"文件")+"</div><div class=\"msg-file-size\">"+size+"</div></div></div>";
+}
+else{
+contentHtml=esc(m.content);
 }
 return"<div class=\"msg-row"+(isMe?" me":"")+"\"><div class=\"msg-avatar\" onclick=\"showUserMenu(event,'"+m.senderId+"','"+esc(m.senderNickname)+"','"+m.senderId+"')\">"+avatarHtml+"</div><div class=\"msg-bubble "+(isMe?"out":"in")+"\"><div class=\"msg-nick\">"+esc(m.senderNickname)+"</div>"+contentHtml+"<div class=\"msg-time\">"+formatTime(m.createdAt)+"</div></div></div>";
 }
@@ -355,9 +356,13 @@ input.value="";input.style.height="auto";
 
 function handleKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}}
 
+function showUploadProgress(){document.getElementById("uploadProgress").classList.remove("hidden")}
+function hideUploadProgress(){document.getElementById("uploadProgress").classList.add("hidden")}
+
 async function uploadImage(e){
 const file=e.target.files[0];if(!file)return;
 if(file.size>5*1024*1024){alert("文件太大（最大5MB）");return}
+showUploadProgress();
 const formData=new FormData();
 formData.append("file",file);
 try{
@@ -367,12 +372,14 @@ if(d.success){
 ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content:d.data.content,msg_type:"image",file_name:d.data.fileName,file_size:d.data.fileSize}}));
 }else{alert(d.error||"上传失败")}
 }catch(err){alert("上传失败")}
+finally{hideUploadProgress()}
 e.target.value="";
 }
 
 async function uploadFile(e){
 const file=e.target.files[0];if(!file)return;
 if(file.size>5*1024*1024){alert("文件太大（最大5MB）");return}
+showUploadProgress();
 const formData=new FormData();
 formData.append("file",file);
 try{
@@ -382,6 +389,7 @@ if(d.success){
 ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content:d.data.content,msg_type:"file",file_name:d.data.fileName,file_size:d.data.fileSize}}));
 }else{alert(d.error||"上传失败")}
 }catch(err){alert("上传失败")}
+finally{hideUploadProgress()}
 e.target.value="";
 }
 
@@ -420,7 +428,6 @@ const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
 document.getElementById("createUserCard").classList.toggle("hidden",!hasPerm("user_create"));
 document.getElementById("createGroupCard").classList.toggle("hidden",!hasPerm("group_create"));
-if(hasPerm("permission_grant"))document.getElementById("permsTab").classList.remove("hidden");
 }
 
 async function createUser(){
@@ -446,6 +453,7 @@ if(d.success){
 const perms=user.permissions||[];
 const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
 el.innerHTML=d.data.length?d.data.map(u=>{
+userPermissions[u.uid]=u.permissions||[];
 let badges="<span class=\"item-badge "+(u.online?"online":"")+"\">"+(u.online?"在线":"离线")+"</span>";
 if(u.role==="admin")badges="<span class=\"item-badge admin\">管理员</span>"+badges;
 if(u.status==="banned")badges="<span class=\"item-badge banned\">已封禁</span>"+badges;
@@ -456,9 +464,10 @@ if(hasPerm("user_ban"))actions+=(u.status==="banned"?"<button class=\"btn sm\" o
 if(hasPerm("user_mute"))actions+="<button class=\"btn sm warn\" onclick=\"muteUser('"+u.uid+"','"+esc(u.nickname)+"')\">禁言</button>";
 if(hasPerm("user_kick"))actions+="<button class=\"btn sm\" onclick=\"kickUser('"+u.uid+"')\">踢出</button>";
 if(hasPerm("user_kick"))actions+="<button class=\"btn sm danger\" onclick=\"deleteUser('"+u.uid+"')\">删除</button>";
+if(hasPerm("permission_grant"))actions+="<button class=\"btn sm success\" onclick=\"openPermModal('"+u.uid+"','"+esc(u.nickname)+"')\">权限</button>";
 }
-const permTags=(u.permissions||[]).map(p=>"<span class=\"permission-tag\">"+p+"</span>").join("");
-return"<div class=\"item-card\"><div class=\"item-header\"><span class=\"item-title\">"+esc(u.nickname)+"</span>"+badges+"</div><div class=\"item-info\">UID: "+u.uid+(u.lastIp?" | IP: "+u.lastIp:"")+"</div>"+(permTags?"<div class=\"permission-list\">"+permTags+"</div>":"")+(actions?"<div class=\"item-actions\">"+actions+"</div>":"")+"</div>";
+const permTags=(u.permissions||[]).length?"<div class=\"permission-list\">"+(u.permissions||[]).slice(0,5).map(p=>"<span class=\"permission-tag\">"+p+"</span>").join("")+(u.permissions.length>5?"<span class=\"permission-tag\">+"+(u.permissions.length-5)+"</span>":"")+"</div>":"";
+return"<div class=\"item-card\"><div class=\"item-header\"><span class=\"item-title\">"+esc(u.nickname)+"</span>"+badges+"</div><div class=\"item-info\">UID: "+u.uid+(u.lastIp?" | IP: "+u.lastIp:"")+"</div>"+permTags+(actions?"<div class=\"item-actions\">"+actions+"</div>":"")+"</div>";
 }).join(""):"<div class=\"empty\">暂无用户</div>"
 }
 }catch(e){}
@@ -543,7 +552,7 @@ document.getElementById("menuMuteBtn").classList.toggle("hidden",isSelf||!hasPer
 document.getElementById("menuUnmuteBtn").classList.toggle("hidden",isSelf||!hasPerm("user_mute"));
 menu.querySelectorAll(".user-menu-item")[2].classList.toggle("hidden",isSelf||!hasPerm("user_kick"));
 menu.querySelectorAll(".user-menu-item")[3].classList.toggle("hidden",isSelf||!hasPerm("user_ban"));
-menu.querySelectorAll(".user-menu-item")[4].classList.toggle("hidden",isSelf||!hasPerm("permission_grant"));
+document.getElementById("menuPermBtn").classList.toggle("hidden",isSelf||!hasPerm("permission_grant"));
 document.getElementById("menuUserName").textContent=nick;
 document.getElementById("menuUserInfo").textContent="UID: "+uid;
 menuTargetUser={uid,userId,nick};
@@ -582,28 +591,48 @@ try{await api("/api/admin/users/"+menuTargetUser.uid+"/ban",{method:"PUT"});aler
 function menuGrant(){
 closeUserMenu();
 if(menuTargetUser){
-document.getElementById("permUserName").textContent=menuTargetUser.nick;
-renderPermGrid();
-document.getElementById("permModal").classList.remove("hidden");
+openPermModal(menuTargetUser.uid,menuTargetUser.nick);
 }
 }
 
-function renderPermGrid(){
-const grid=document.getElementById("permGrid");
-grid.innerHTML=allPermissions.map(p=>"<div class=\"permission-item\"><label><input type=\"checkbox\" id=\"perm_"+p.name+"\" value=\""+p.name+"\"> "+p.description+"</label></div>").join("");
+function openPermModal(uid,nick){
+menuTargetUser={uid,nick};
+document.getElementById("permUserName").textContent=nick;
+renderPermGrid(uid);
+document.getElementById("permModal").classList.remove("hidden");
 }
+
+function renderPermGrid(uid){
+const grid=document.getElementById("permGrid");
+const currentPerms=userPermissions[uid]||[];
+grid.innerHTML=allPermissions.map(p=>{
+const checked=currentPerms.includes(p.name)?"checked":"";
+return"<div class=\"permission-item\"><label><input type=\"checkbox\" "+checked+" data-perm=\""+p.name+"\"> "+p.description+"</label></div>";
+}).join("");
+}
+
 async function savePermissions(){
 if(!menuTargetUser)return;
 const checkboxes=document.querySelectorAll("#permGrid input[type=\"checkbox\"]");
-for(const cb of checkboxes){
-const permName=cb.value;
-if(cb.checked){
+const permToGrant=[];
+const permToRevoke=[];
+checkboxes.forEach(cb=>{
+const permName=cb.dataset.perm;
+const currentPerms=userPermissions[menuTargetUser.uid]||[];
+if(cb.checked&&!currentPerms.includes(permName)){
+permToGrant.push(permName);
+}else if(!cb.checked&¤tPerms.includes(permName)){
+permToRevoke.push(permName);
+}
+});
+for(const permName of permToGrant){
 await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"POST",body:JSON.stringify({permission_name:permName})});
-}else{
+}
+for(const permName of permToRevoke){
 await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"DELETE",body:JSON.stringify({permission_name:permName})});
 }
-}
-closePermModal();loadUsers();
+closePermModal();
+loadUsers();
 }
 function closePermModal(){document.getElementById("permModal").classList.add("hidden")}
 
