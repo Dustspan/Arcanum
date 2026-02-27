@@ -288,3 +288,103 @@ pub async fn upload_file(
     
     Err(crate::error::AppError::BadRequest("未找到文件".to_string()))
 }
+
+/// 标记消息已读
+pub async fn mark_read(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Path(msg_id): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    // 检查消息是否存在且用户有权限查看
+    let msg: Option<(String,)> = sqlx::query_as(
+        "SELECT group_id FROM messages WHERE id = ?"
+    )
+    .bind(&msg_id)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    let msg = msg.ok_or_else(|| crate::error::AppError::NotFound)?;
+    
+    // 检查用户是否是频道成员
+    let member: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM group_members WHERE group_id = ? AND user_id = ?"
+    )
+    .bind(&msg.0).bind(&claims.sub)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    if member.is_none() {
+        return Err(crate::error::AppError::Forbidden);
+    }
+    
+    // 标记已读
+    let id = uuid::Uuid::new_v4().to_string();
+    sqlx::query("INSERT OR IGNORE INTO message_reads (id, message_id, user_id) VALUES (?, ?, ?)")
+        .bind(&id).bind(&msg_id).bind(&claims.sub)
+        .execute(&state.db)
+        .await?;
+    
+    // 获取已读人数并广播
+    let read_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM message_reads WHERE message_id = ?")
+        .bind(&msg_id)
+        .fetch_one(&state.db)
+        .await?;
+    
+    let _ = state.broadcast.broadcast_to_group(&msg.0, WsMessage {
+        event: "message_read".into(),
+        data: json!({
+            "id": msg_id,
+            "groupId": msg.0,
+            "userId": claims.sub,
+            "readCount": read_count
+        })
+    });
+    
+    Ok(Json(json!({"success": true, "data": {"readCount": read_count}})))
+}
+
+/// 批量标记频道消息已读
+pub async fn mark_group_read(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Path(group_id): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    // 检查用户是否是频道成员
+    let member: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM group_members WHERE group_id = ? AND user_id = ?"
+    )
+    .bind(&group_id).bind(&claims.sub)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    if member.is_none() {
+        return Err(crate::error::AppError::Forbidden);
+    }
+    
+    // 获取频道中所有未读消息
+    let unread_msgs: Vec<String> = sqlx::query_scalar(r#"
+        SELECT m.id FROM messages m
+        WHERE m.group_id = ? AND m.sender_id != ?
+        AND NOT EXISTS (
+            SELECT 1 FROM message_reads mr WHERE mr.message_id = m.id AND mr.user_id = ?
+        )
+    "#)
+    .bind(&group_id).bind(&claims.sub).bind(&claims.sub)
+    .fetch_all(&state.db)
+    .await?;
+    
+    // 批量标记已读
+    for msg_id in &unread_msgs {
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query("INSERT OR IGNORE INTO message_reads (id, message_id, user_id) VALUES (?, ?, ?)")
+            .bind(&id).bind(msg_id).bind(&claims.sub)
+            .execute(&state.db)
+            .await.ok();
+    }
+    
+    Ok(Json(json!({"success": true, "data": {"markedCount": unread_msgs.len()}})))
+}

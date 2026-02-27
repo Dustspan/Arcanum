@@ -56,6 +56,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .msg-bubble.out .msg-nick{color:rgba(0,0,0,.5)}
 .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right}
 .msg-bubble.out .msg-time{color:rgba(0,0,0,.4)}
+.msg-read{margin-left:8px;color:var(--accent)}
 .msg-image{max-width:100%;max-height:300px;border-radius:8px;cursor:pointer;display:block}
 .msg-file{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;margin-top:4px}
 .msg-file-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center}
@@ -345,6 +346,8 @@ el.innerHTML="";
 displayedMsgIds.clear();
 d.data.forEach(m=>addMessage(m,false));
 el.scrollTop=el.scrollHeight;
+// 标记所有消息已读
+api("/api/messages/group/"+groupId+"/read",{method:"POST"});
 }
 }catch(e){}
 }
@@ -458,6 +461,24 @@ const msgEl=el.querySelector('[data-mid="'+m.data.id+'"]');
 if(msgEl)msgEl.remove();
 displayedMsgIds.delete(m.data.id);
 }
+}
+if(m.event==="message_read"){
+// 处理已读状态更新
+if(m.data.groupId===groupId){
+updateReadCount(m.data.id,m.data.readCount);
+}
+}
+}
+
+function updateReadCount(msgId,readCount){
+const el=$("msgs");
+const msgEl=el.querySelector('[data-mid="'+msgId+'"]');
+if(msgEl){
+let readEl=msgEl.querySelector(".msg-read");
+if(!readEl){
+const timeEl=msgEl.querySelector(".msg-time");
+if(timeEl)timeEl.innerHTML+='<span class="msg-read">'+readCount+'已读</span>';
+}else{readEl.textContent=readCount+'已读';}
 }
 }
 

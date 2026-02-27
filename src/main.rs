@@ -78,6 +78,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/messages/group/:id", delete(handlers::messages::clear_messages))
         .route("/api/messages/:id", delete(handlers::messages::delete_message))
         .route("/api/messages/:id/recall", post(handlers::messages::recall_message))
+        .route("/api/messages/:id/read", post(handlers::messages::mark_read))
+        .route("/api/messages/group/:id/read", post(handlers::messages::mark_group_read))
         .route("/api/messages/file/:id", post(handlers::messages::upload_file))
         // WebSocket
         .route("/ws", get(ws::ws_handler))

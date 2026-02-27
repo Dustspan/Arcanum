@@ -54,6 +54,17 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
     query("ALTER TABLE messages ADD COLUMN file_name TEXT").execute(pool).await.ok();
     query("ALTER TABLE messages ADD COLUMN file_size INTEGER DEFAULT 0").execute(pool).await.ok();
     
+    // 消息已读状态表
+    query(r#"
+        CREATE TABLE IF NOT EXISTS message_reads (
+            id TEXT PRIMARY KEY,
+            message_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            read_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(message_id, user_id)
+        )
+    "#).execute(pool).await?;
+    
     // IP封禁表
     query("CREATE TABLE IF NOT EXISTS ip_bans (id TEXT PRIMARY KEY, ip TEXT NOT NULL UNIQUE, reason TEXT, banned_by TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)").execute(pool).await?;
     
