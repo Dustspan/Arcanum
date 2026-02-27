@@ -3,11 +3,11 @@ use axum::{
     response::Response,
 };
 use futures_util::{SinkExt, StreamExt};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use crate::{AppState, error::AppError, models::Claims, utils::verify_token, utils::is_muted, utils::check_rate_limit};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WsMessage { pub event: String, pub data: serde_json::Value }
+use crate::broadcast::WsMessage;
 
 #[derive(Debug, Deserialize)]
 pub struct WsQuery { pub token: String }
@@ -19,7 +19,6 @@ pub async fn ws_handler(
 ) -> Result<Response, AppError> {
     let claims = verify_token(&q.token, &state.config).map_err(|_| AppError::Unauthorized)?;
     
-    // 验证用户
     let user: Option<(String, i64)> = sqlx::query_as(
         "SELECT account_status, token_version FROM users WHERE id = ?"
     )
@@ -36,7 +35,6 @@ pub async fn ws_handler(
         None => return Err(AppError::Kicked),
     }
     
-    // 设置在线状态
     sqlx::query("UPDATE users SET online = 1 WHERE id = ?")
         .bind(&claims.sub).execute(&state.db).await.ok();
     
@@ -44,35 +42,49 @@ pub async fn ws_handler(
 }
 
 async fn handle(socket: WebSocket, state: AppState, claims: Claims) {
-    let (mut sender, mut receiver) = socket.split();
-    let mut rx = state.tx.subscribe();
+    let (sender, mut receiver) = socket.split();
+    let sender = Arc::new(Mutex::new(sender));
     let user_id = claims.sub.clone();
     let nickname = claims.nickname.clone();
     let token_version = claims.token_version;
     
     tracing::info!("WS connected: {}", nickname);
     
+    // 获取用户加入的频道列表
+    let groups: Vec<String> = match sqlx::query_scalar(
+        "SELECT group_id FROM group_members WHERE user_id = ?"
+    )
+    .bind(&user_id)
+    .fetch_all(&state.db)
+    .await
+    {
+        Ok(g) => g,
+        Err(_) => return,
+    };
+    
+    // 订阅所有频道
+    let mut group_receivers: Vec<(String, tokio::sync::broadcast::Receiver<WsMessage>)> = groups
+        .iter()
+        .map(|gid| (gid.clone(), state.broadcast.subscribe(gid)))
+        .collect();
+    
+    // 也订阅全局通道
+    let mut global_rx = state.broadcast.subscribe_global();
+    
     let state2 = state.clone();
     let user_id2 = user_id.clone();
     let nickname2 = nickname.clone();
     let token_version2 = token_version;
+    let sender2 = sender.clone();
     
-    // 用于发送 pong 响应
-    let sender_clone = state.clone();
-    let user_id_clone = user_id.clone();
-    
+    // 接收客户端消息
     let recv = async move {
         while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
                 // 处理 ping
-                if text == r#"{"event":"ping"}"# || text.contains(r#""event":"ping""#) {
-                    // 发送 pong
-                    let pong = r#"{"event":"pong"}"#;
-                    // 通过广播发送 pong
-                    let _ = sender_clone.tx.send(WsMessage { 
-                        event: "pong".into(), 
-                        data: serde_json::json!({}) 
-                    });
+                if text.contains(r#""event":"ping""#) {
+                    let mut s = sender2.lock().await;
+                    let _ = s.send(Message::Text(r#"{"event":"pong"}"#.to_string())).await;
                     continue;
                 }
                 
@@ -102,10 +114,42 @@ async fn handle(socket: WebSocket, state: AppState, claims: Claims) {
         }
     };
     
+    // 发送消息到客户端
     let send = async {
-        while let Ok(m) = rx.recv().await {
-            let json = serde_json::to_string(&m).unwrap();
-            if sender.send(Message::Text(json)).await.is_err() { break; }
+        loop {
+            // 检查全局消息
+            match global_rx.try_recv() {
+                Ok(m) => {
+                    let json = serde_json::to_string(&m).unwrap();
+                    let mut s = sender.lock().await;
+                    if s.send(Message::Text(json)).await.is_err() { break; }
+                    continue;
+                }
+                Err(tokio::sync::broadcast::error::TryRecvError::Empty) => {}
+                Err(_) => break,
+            }
+            
+            // 检查各频道消息
+            let mut got_message = false;
+            for (_gid, rx) in &mut group_receivers {
+                match rx.try_recv() {
+                    Ok(m) => {
+                        let json = serde_json::to_string(&m).unwrap();
+                        let mut s = sender.lock().await;
+                        if s.send(Message::Text(json)).await.is_err() { 
+                            return;
+                        }
+                        got_message = true;
+                        break;
+                    }
+                    Err(tokio::sync::broadcast::error::TryRecvError::Empty) => {}
+                    Err(_) => {}
+                }
+            }
+            
+            if !got_message {
+                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+            }
         }
     };
     
@@ -121,7 +165,7 @@ async fn handle(socket: WebSocket, state: AppState, claims: Claims) {
 async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMessage) {
     // 处理 ping
     if msg.event == "ping" {
-        let _ = state.tx.send(WsMessage { 
+        let _ = state.broadcast.broadcast_global(WsMessage { 
             event: "pong".into(), 
             data: serde_json::json!({}) 
         });
@@ -143,12 +187,10 @@ async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMess
     let Ok(d) = serde_json::from_value::<MsgData>(msg.data) else { return };
     if d.content.is_empty() || d.content.len() > 5000 { return; }
     
-    // 检查禁言
     if is_muted(&state.db, user_id).await.unwrap_or(false) {
         return;
     }
     
-    // 检查速率限制
     if !check_rate_limit(&state.db, user_id, "message", &state.config).await.unwrap_or(false) {
         return;
     }
@@ -167,14 +209,24 @@ async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMess
         .bind(&d.file_name).bind(d.file_size.unwrap_or(0)).bind(burn).bind(&now)
         .execute(&state.db).await.is_ok() {
         
-        // 获取发送者头像
         let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
             .bind(user_id).fetch_optional(&state.db).await.ok().flatten();
         
-        let _ = state.tx.send(WsMessage { event: "message".into(), data: serde_json::json!({
-            "id": id, "groupId": d.group_id, "senderId": user_id, "senderNickname": nickname,
-            "senderAvatar": avatar, "content": d.content, "msgType": msg_type,
-            "fileName": d.file_name, "fileSize": d.file_size, "burnAfter": burn, "createdAt": now
-        })});
+        let _ = state.broadcast.broadcast_to_group(&d.group_id, WsMessage { 
+            event: "message".into(), 
+            data: serde_json::json!({
+                "id": id, 
+                "groupId": d.group_id, 
+                "senderId": user_id, 
+                "senderNickname": nickname,
+                "senderAvatar": avatar, 
+                "content": d.content, 
+                "msgType": msg_type,
+                "fileName": d.file_name, 
+                "fileSize": d.file_size, 
+                "burnAfter": burn, 
+                "createdAt": now
+            })
+        });
     }
 }

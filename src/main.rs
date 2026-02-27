@@ -2,16 +2,15 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use axum::{routing::{get, post, delete, put}, Router, response::Html};
 use sqlx::SqlitePool;
-use tokio::sync::broadcast;
 use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer, services::ServeDir};
 
-mod config; mod db; mod error; mod handlers; mod models; mod utils; mod ws; mod static_files; mod storage;
+mod config; mod db; mod error; mod handlers; mod models; mod utils; mod ws; mod static_files; mod storage; mod broadcast;
 
 pub type AppState = Arc<AppStateInner>;
 
 pub struct AppStateInner {
     pub db: SqlitePool,
-    pub tx: broadcast::Sender<ws::WsMessage>,
+    pub broadcast: broadcast::BroadcastManager,
     pub config: config::Config,
     pub storage: storage::FileStorage,
 }
@@ -27,9 +26,14 @@ async fn main() -> anyhow::Result<()> {
     db::init_admin(&db, &config).await.ok();
     
     let storage = storage::FileStorage::new(&config.data_dir)?;
+    let broadcast_manager = broadcast::BroadcastManager::new();
     
-    let (tx, _) = broadcast::channel(1000);
-    let state: AppState = Arc::new(AppStateInner { db, tx, config, storage });
+    let state: AppState = Arc::new(AppStateInner { 
+        db, 
+        broadcast: broadcast_manager, 
+        config, 
+        storage 
+    });
     
     // 静态文件服务
     let files_service = ServeDir::new(state.storage.base_path())

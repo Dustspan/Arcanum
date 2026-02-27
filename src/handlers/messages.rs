@@ -5,7 +5,7 @@ use crate::{
     models::SendMessageRequest, 
     handlers::auth::get_claims_full, 
     utils::{check_permission, is_muted, check_rate_limit},
-    ws::WsMessage,
+    broadcast::WsMessage,
     AppState
 };
 
@@ -43,7 +43,7 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
         .bind(&claims.sub).fetch_optional(&state.db).await?
         .flatten();
     
-    let _ = state.tx.send(WsMessage { 
+    let _ = state.broadcast.broadcast_to_group(&req.group_id, WsMessage { 
         event: "message".into(), 
         data: json!({
             "id": id, 
@@ -204,7 +204,7 @@ pub async fn upload_file(
             .bind(&claims.sub).fetch_optional(&state.db).await?
             .flatten();
         
-        let _ = state.tx.send(WsMessage { 
+        let _ = state.broadcast.broadcast_to_group(&group_id, WsMessage { 
             event: "message".into(), 
             data: json!({
                 "id": id, 
