@@ -5,90 +5,124 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>ARCANUM</title>
 <style>
-:root{--bg:#0a0a0f;--bg2:#12121a;--card:#16161f;--text:#e0e0e8;--muted:#6a6a7a;--accent:#00f0ff;--border:#2a2a3a;--error:#ff3366;--success:#00ff88}
+:root{--bg:#0a0a0f;--bg2:#12121a;--card:#16161f;--text:#e0e0e8;--muted:#6a6a7a;--accent:#00f0ff;--border:#2a2a3a;--error:#ff3366;--success:#00ff88;--warn:#ffaa00}
 [data-theme="light"]{--bg:#f0f0f5;--bg2:#e8e8f0;--card:#fff;--text:#1a1a2e;--muted:#6a6a7a;--accent:#0088aa;--border:#d0d0da}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min-height:100vh}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
 .container{max-width:540px;margin:0 auto;padding:12px;min-height:100vh}
-.btn{padding:10px 20px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:4px;font-size:14px;cursor:pointer}
+.btn{padding:10px 20px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:14px;cursor:pointer;transition:all .2s}
 .btn:hover{background:var(--accent);color:#000}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.full{width:100%}
 .btn.sm{padding:6px 12px;font-size:12px}
 .btn.danger{border-color:var(--error);color:var(--error)}
-.input{width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:14px;outline:none}
+.input{width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:14px;outline:none;transition:border-color .2s}
 .input:focus{border-color:var(--accent)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
-.err{color:var(--error);font-size:13px;padding:8px;background:rgba(255,51,102,.1);border-radius:4px;margin-top:8px}
-.logo{font-size:28px;font-weight:700;text-align:center;margin:60px 0 30px;color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.err{color:var(--error);font-size:13px;padding:8px;background:rgba(255,51,102,.1);border-radius:8px;margin-top:8px}
+.logo{font-size:32px;font-weight:700;text-align:center;margin:80px 0 30px;color:var(--accent);letter-spacing:4px}
 .header{display:flex;justify-content:space-between;align-items:center;padding:8px 0;margin-bottom:12px}
-.header h1{font-size:16px;color:var(--accent)}
+.header h1{font-size:16px;color:var(--accent);font-weight:600}
 .header-info{font-size:11px;color:var(--muted)}
 .header-actions{display:flex;gap:6px}
 .tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px}
-.tab{flex:1;text-align:center;padding:8px;color:var(--muted);cursor:pointer;font-size:13px;border-bottom:2px solid transparent}
+.tab{flex:1;text-align:center;padding:10px;color:var(--muted);cursor:pointer;font-size:13px;border-bottom:2px solid transparent;transition:all .2s}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .channel-input{display:flex;gap:8px;margin-bottom:16px}
-.channel-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;margin-bottom:8px}
-.channel-card:hover{border-color:var(--accent)}
-.channel-card h3{font-size:14px;margin-bottom:4px}
+.channel-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;margin-bottom:8px;transition:all .2s}
+.channel-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.channel-card h3{font-size:15px;margin-bottom:4px;font-weight:600}
 .channel-card p{font-size:12px;color:var(--muted)}
-.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 100px)}
-.chat-header{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--card);border-bottom:1px solid var(--border)}
-.chat-header h3{font-size:14px}
-.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--bg2)}
-.msg-row{display:flex;gap:8px}
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 100px);border-radius:12px;overflow:hidden}
+.chat-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--border)}
+.chat-header h3{font-size:15px;font-weight:600}
+.chat-header-info{font-size:11px;color:var(--muted)}
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--bg2)}
+.msg-row{display:flex;gap:10px;align-items:flex-start}
 .msg-row.me{flex-direction:row-reverse}
-.msg-avatar{width:32px;height:32px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#ff00aa);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#000;flex-shrink:0;cursor:pointer;overflow:hidden}
+.msg-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#000;flex-shrink:0;cursor:pointer;overflow:hidden;transition:transform .2s}
+.msg-avatar:hover{transform:scale(1.1)}
 .msg-avatar img{width:100%;height:100%;object-fit:cover}
-.msg-bubble{max-width:70%;padding:8px 12px;border-radius:10px;font-size:13px}
-.msg-bubble.in{background:var(--card);border:1px solid var(--border)}
-.msg-bubble.out{background:var(--accent);color:#000}
-.msg-nick{font-size:10px;color:var(--accent);margin-bottom:2px}
-.msg-time{font-size:9px;color:var(--muted);margin-top:4px;text-align:right}
-.msg-img{max-width:180px;border-radius:6px;cursor:pointer}
-.chat-input{display:flex;gap:8px;padding:12px;background:var(--bg);border-top:1px solid var(--border)}
-.chat-input textarea{flex:1;padding:8px 12px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:16px;font-size:13px;outline:none;resize:none;max-height:60px}
-.chat-input input[type="file"]{display:none}
-.upload-btn{background:var(--bg2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:16px}
-.upload-btn:hover{border-color:var(--accent);color:var(--accent)}
+.msg-content{max-width:70%;display:flex;flex-direction:column}
+.msg-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.4;position:relative}
+.msg-bubble.in{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg-bubble.out{background:linear-gradient(135deg,var(--accent),#a855f7);color:#000;border-bottom-right-radius:4px}
+.msg-nick{font-size:11px;color:var(--accent);margin-bottom:4px;font-weight:500}
+.msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right;opacity:.7}
+.msg-img{max-width:200px;border-radius:10px;cursor:pointer;transition:transform .2s}
+.msg-img:hover{transform:scale(1.02)}
+.msg-file{display:flex;align-items:center;gap:10px;padding:10px;background:rgba(0,0,0,.1);border-radius:8px;cursor:pointer;transition:background .2s}
+.msg-file:hover{background:rgba(0,0,0,.2)}
+.msg-file-icon{font-size:24px}
+.msg-file-info{flex:1}
+.msg-file-name{font-size:12px;font-weight:500;word-break:break-all}
+.msg-file-size{font-size:10px;color:var(--muted)}
+.msg-actions{display:none;position:absolute;top:-24px;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px}
+.msg-row:hover .msg-actions{display:flex;gap:4px}
+.msg-action{background:none;border:none;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;border-radius:4px}
+.msg-action:hover{color:var(--accent);background:var(--bg2)}
+.chat-input-wrap{background:var(--bg);border-top:1px solid var(--border);padding:12px}
+.chat-input{display:flex;gap:10px;align-items:flex-end}
+.chat-input textarea{flex:1;padding:10px 14px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:20px;font-size:14px;outline:none;resize:none;max-height:100px;line-height:1.4}
+.chat-tools{display:flex;gap:6px}
+.tool-btn{width:36px;height:36px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:16px;transition:all .2s}
+.tool-btn:hover{border-color:var(--accent);color:var(--accent);transform:scale(1.1)}
+.tool-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
 .admin-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
-.admin-tab{flex:1;min-width:50px;padding:8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;font-size:11px;cursor:pointer}
-.admin-tab.active{border-color:var(--accent);color:var(--accent)}
+.admin-tab{flex:1;min-width:60px;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:12px;cursor:pointer;transition:all .2s}
+.admin-tab.active{border-color:var(--accent);color:var(--accent);background:rgba(0,240,255,.1)}
 .admin-section{display:none}
 .admin-section.active{display:block}
-.item-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:6px}
+.item-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;transition:border-color .2s}
+.item-card:hover{border-color:var(--accent)}
 .item-header{display:flex;justify-content:space-between;align-items:center}
-.item-title{font-size:13px}
+.item-title{font-size:13px;font-weight:500}
 .item-info{font-size:10px;color:var(--muted);margin-top:4px}
-.badge{display:inline-block;padding:2px 6px;border-radius:8px;font-size:9px;margin-left:4px}
-.badge.success{background:rgba(0,255,136,.2);color:var(--success)}
-.badge.error{background:rgba(255,51,102,.2);color:var(--error)}
-.perm-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.perm-tag{font-size:10px;padding:2px 6px;background:var(--bg);border:1px solid var(--border);border-radius:4px}
-.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:1000;padding:12px}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:8px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto}
-.modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid var(--border)}
-.modal-header h3{font-size:14px}
-.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
-.modal-body{padding:12px}
-.user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px;z-index:1001;min-width:150px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
-.user-menu-item{display:block;width:100%;padding:6px 10px;background:none;border:none;color:var(--text);text-align:left;cursor:pointer;border-radius:4px;font-size:12px}
+.badge{display:inline-block;padding:3px 8px;border-radius:10px;font-size:10px;margin-left:4px;font-weight:500}
+.badge.success{background:rgba(0,255,136,.15);color:var(--success)}
+.badge.error{background:rgba(255,51,102,.15);color:var(--error)}
+.badge.warn{background:rgba(255,170,0,.15);color:var(--warn)}
+.perm-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.perm-tag{font-size:10px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px}
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:1000;padding:12px;backdrop-filter:blur(4px)}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:15px;font-weight:600}
+.modal-close{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:0;line-height:1}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:16px}
+.user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;z-index:1001;min-width:160px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.user-menu-header{padding:8px;border-bottom:1px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.user-menu-item{display:block;width:100%;padding:8px 12px;background:none;border:none;color:var(--text);text-align:left;cursor:pointer;border-radius:8px;font-size:13px;transition:background .2s}
 .user-menu-item:hover{background:var(--bg2)}
 .user-menu-item.danger{color:var(--error)}
-.friend-item{display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer}
-.friend-item:hover{background:var(--card)}
-.friend-avatar{width:36px;height:36px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#ff00aa);display:flex;align-items:center;justify-content:center;font-size:14px;color:#000;overflow:hidden}
+.friend-item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg2);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all .2s}
+.friend-item:hover{background:var(--card);transform:translateX(4px)}
+.friend-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-size:15px;color:#000;overflow:hidden}
 .friend-avatar img{width:100%;height:100%;object-fit:cover}
 .friend-info{flex:1}
-.friend-name{font-size:13px}
-.friend-status{font-size:10px;color:var(--muted)}
+.friend-name{font-size:14px;font-weight:500}
+.friend-status{font-size:11px;color:var(--muted)}
 .friend-status.online{color:var(--success)}
-.dm-header{display:flex;align-items:center;gap:8px;padding:12px;background:var(--card);border-bottom:1px solid var(--border)}
-.dm-back{background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer}
-.dm-title{font-size:14px}
+.dm-header{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--border)}
+.dm-back{background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0}
+.dm-title{font-size:15px;font-weight:600}
 .image-preview{position:fixed;inset:0;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;z-index:2000;cursor:zoom-out}
-.image-preview img{max-width:90%;max-height:90%}
+.image-preview img{max-width:95%;max-height:95%;object-fit:contain;border-radius:8px}
+.upload-progress{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:3000}
+.upload-progress-inner{text-align:center}
+.upload-progress-bar{width:200px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:12px}
+.upload-progress-fill{height:100%;background:var(--accent);transition:width .3s}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+.stat-value{font-size:24px;font-weight:700;color:var(--accent)}
+.stat-label{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* 滚动条美化 */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 </style>
 </head>
 <body>
@@ -111,7 +145,6 @@ Vue.createApp({
       channelLoading: false,
       messages: [],
       msgInput: '',
-      msgsBox: null,
       dmTarget: null,
       dmMessages: [],
       dmInput: '',
@@ -138,12 +171,15 @@ Vue.createApp({
       loginError: '',
       loginLoading: false,
       previewImageUrl: null,
+      uploadProgress: 0,
+      showUploadProgress: false,
       ws: null
     };
   },
   computed: {
     canAccessAdmin() { return this.isAdmin || this.userPerms.length > 0; },
-    canManageUser() { return this.hasPerm('user_ban') || this.hasPerm('user_mute') || this.isAdmin; }
+    canManageUser() { return this.hasPerm('user_ban') || this.hasPerm('user_mute') || this.isAdmin; },
+    canUpload() { return this.hasPerm('file_upload'); }
   },
   methods: {
     hasPerm(name) {
@@ -158,9 +194,19 @@ Vue.createApp({
       if (this.token) headers['Authorization'] = 'Bearer ' + this.token;
       try {
         const r = await fetch(location.origin + path, { ...options, headers });
-        return await r.json();
+        const text = await r.text();
+        // 尝试解析JSON
+        try {
+          const data = JSON.parse(text);
+          return data;
+        } catch (e) {
+          // 如果不是JSON，返回错误
+          console.error('API返回非JSON:', text.substring(0, 200));
+          return { success: false, error: '服务器返回格式错误: ' + text.substring(0, 50) };
+        }
       } catch (e) {
-        return { success: false, error: e.message };
+        console.error('API请求失败:', e);
+        return { success: false, error: '网络错误: ' + e.message };
       }
     },
     async doLogin() {
@@ -243,11 +289,12 @@ Vue.createApp({
       const d = await this.api('/api/messages/group/' + this.currentGroup.id);
       if (d.success) {
         this.messages = d.data;
-        this.$nextTick(() => {
-          const box = this.$refs.msgsBox;
-          if (box) box.scrollTop = box.scrollHeight;
-        });
+        this.$nextTick(() => this.scrollToBottom());
       }
+    },
+    scrollToBottom() {
+      const box = this.$refs.msgsBox;
+      if (box) box.scrollTop = box.scrollHeight;
     },
     async doSendMsg() {
       if (!this.msgInput.trim() || !this.currentGroup) return;
@@ -259,25 +306,100 @@ Vue.createApp({
       });
       if (!d.success) {
         this.msgInput = content;
-        alert(d.error || '发送失败');
+        alert('发送失败: ' + (d.error || '未知错误'));
       }
+    },
+    // 图片压缩
+    compressImage(file, maxWidth = 800, quality = 0.8) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = (h * maxWidth) / w;
+              w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob(resolve, 'image/jpeg', quality);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
     },
     async uploadFile(e) {
       const file = e.target.files[0];
       if (!file || !this.currentGroup) return;
-      const formData = new FormData();
-      formData.append('file', file);
+      
+      const isImage = file.type.startsWith('image/');
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      
+      // 显示上传进度
+      this.showUploadProgress = true;
+      this.uploadProgress = 0;
+      
       try {
+        let uploadFile = file;
+        
+        // 图片压缩
+        if (isImage) {
+          if (file.size > maxSize) {
+            this.uploadProgress = 30;
+            uploadFile = await this.compressImage(file, 800, 0.7);
+            this.uploadProgress = 60;
+          } else {
+            this.uploadProgress = 30;
+          }
+        }
+        
+        // 检查大小
+        if (uploadFile.size > maxSize) {
+          alert('文件太大，请选择小于5MB的文件');
+          this.showUploadProgress = false;
+          e.target.value = '';
+          return;
+        }
+        
+        this.uploadProgress = 70;
+        
+        const formData = new FormData();
+        formData.append('file', uploadFile, file.name);
+        
         const r = await fetch(location.origin + '/api/messages/file/' + this.currentGroup.id, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + this.token },
           body: formData
         });
-        const d = await r.json();
-        if (!d.success) alert(d.error || '上传失败');
+        
+        this.uploadProgress = 90;
+        const text = await r.text();
+        
+        try {
+          const d = JSON.parse(text);
+          if (!d.success) {
+            alert('上传失败: ' + (d.error || '未知错误'));
+          }
+        } catch (e) {
+          alert('上传失败: 服务器返回格式错误');
+        }
+        
+        this.uploadProgress = 100;
+        
       } catch (e) {
-        alert('上传失败');
+        alert('上传失败: ' + e.message);
       }
+      
+      setTimeout(() => {
+        this.showUploadProgress = false;
+      }, 500);
+      
       e.target.value = '';
     },
     async recallMessage(id) {
@@ -291,9 +413,25 @@ Vue.createApp({
       }
     },
     renderMsg(m) {
-      if (m.msgType === 'image') return '<img class="msg-img" src="' + m.content + '" @click="previewImage(\'' + m.content + '\')">';
-      if (m.msgType === 'file') return '<div>📄 ' + (m.fileName || '文件') + '</div>';
+      if (m.msgType === 'image') {
+        return `<img class="msg-img" src="${m.content}" @click="previewImage('${m.content}')">`;
+      }
+      if (m.msgType === 'file') {
+        const size = this.formatFileSize(m.fileSize);
+        return `<div class="msg-file" onclick="window.open('${m.content}')">
+          <span class="msg-file-icon">📄</span>
+          <div class="msg-file-info">
+            <div class="msg-file-name">${m.fileName || '文件'}</div>
+            <div class="msg-file-size">${size}</div>
+          </div>
+        </div>`;
+      }
       return m.content || '';
+    },
+    formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     },
     formatTime(t) {
       return new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -308,10 +446,7 @@ Vue.createApp({
         const m = JSON.parse(e.data);
         if (m.event === 'message' && m.data.groupId === this.currentGroup?.id) {
           this.messages.push(m.data);
-          this.$nextTick(() => {
-            const box = this.$refs.msgsBox;
-            if (box) box.scrollTop = box.scrollHeight;
-          });
+          this.$nextTick(() => this.scrollToBottom());
         }
         if (m.event === 'direct_message') {
           if (this.dmTarget && (m.data.senderId === this.dmTarget.id || m.data.receiverId === this.dmTarget.id)) {
@@ -336,13 +471,11 @@ Vue.createApp({
     openUserMenu(e, userId, nickname) {
       e.stopPropagation();
       this.api('/api/users/' + userId).then(d => {
-        if (d.success) {
-          this.userMenu.online = d.data.online;
-        }
+        if (d.success) this.userMenu.online = d.data.online;
       });
       this.userMenu.show = true;
-      this.userMenu.x = Math.min(e.clientX, window.innerWidth - 160);
-      this.userMenu.y = Math.min(e.clientY, window.innerHeight - 150);
+      this.userMenu.x = Math.min(e.clientX, window.innerWidth - 170);
+      this.userMenu.y = Math.min(e.clientY, window.innerHeight - 180);
       this.userMenu.userId = userId;
       this.userMenu.nickname = nickname;
       this.userMenu.uid = userId;
@@ -369,7 +502,7 @@ Vue.createApp({
       });
       if (!d.success) {
         this.dmInput = content;
-        alert(d.error || '发送失败');
+        alert('发送失败: ' + (d.error || '未知错误'));
       }
     },
     async loadFriends() {
@@ -584,8 +717,8 @@ Vue.createApp({
     <div class="logo">ARCANUM</div>
     <div class="card">
       <form @submit.prevent="doLogin">
-        <input class="input" v-model="loginForm.uid" placeholder="UID" style="margin-bottom:8px">
-        <input class="input" v-model="loginForm.pwd" type="password" placeholder="密码" style="margin-bottom:8px">
+        <input class="input" v-model="loginForm.uid" placeholder="UID" style="margin-bottom:10px">
+        <input class="input" v-model="loginForm.pwd" type="password" placeholder="密码" style="margin-bottom:10px">
         <div class="err" v-if="loginError">{{loginError}}</div>
         <button class="btn full" type="submit" :disabled="loginLoading">{{loginLoading ? '登录中...' : '进入'}}</button>
       </form>
@@ -600,16 +733,16 @@ Vue.createApp({
         <div class="header-info">{{user.uid}} <span v-if="isAdmin" class="badge error">管理员</span></div>
       </div>
       <div class="header-actions">
-        <button class="btn sm" @click="toggleTheme">{{theme === 'dark' ? '☀' : '🌙'}}</button>
-        <button class="btn sm" v-if="canAccessAdmin" @click="openAdmin">⚙</button>
+        <button class="btn sm" @click="toggleTheme">{{theme === 'dark' ? '☀️' : '🌙'}}</button>
+        <button class="btn sm" v-if="canAccessAdmin" @click="openAdmin">⚙️</button>
         <button class="btn sm danger" @click="doLogout">退出</button>
       </div>
     </div>
 
     <!-- 标签栏 -->
     <div class="tabs" v-if="!currentGroup && !dmTarget">
-      <div class="tab" :class="{active: mainTab === 'channels'}" @click="mainTab = 'channels'">频道</div>
-      <div class="tab" :class="{active: mainTab === 'friends'}" @click="mainTab = 'friends'; loadFriends()">好友<span v-if="friendRequestCount > 0" style="background:var(--error);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px">{{friendRequestCount}}</span></div>
+      <div class="tab" :class="{active: mainTab === 'channels'}" @click="mainTab = 'channels'">💬 频道</div>
+      <div class="tab" :class="{active: mainTab === 'friends'}" @click="mainTab = 'friends'; loadFriends()">👥 好友<span v-if="friendRequestCount > 0" class="badge error">{{friendRequestCount}}</span></div>
     </div>
 
     <!-- 私聊界面 -->
@@ -619,7 +752,7 @@ Vue.createApp({
         <div class="msg-avatar">{{dmTarget.nickname ? dmTarget.nickname.charAt(0) : '?'}}</div>
         <div>
           <div class="dm-title">{{dmTarget.nickname}}</div>
-          <div style="font-size:10px" :style="{color: dmTarget.online ? 'var(--success)' : 'var(--muted)'}">{{dmTarget.online ? '在线' : '离线'}}</div>
+          <div style="font-size:11px" :style="{color: dmTarget.online ? 'var(--success)' : 'var(--muted)'}">{{dmTarget.online ? '🟢 在线' : '⚫ 离线'}}</div>
         </div>
       </div>
       <div class="chat-msgs" ref="dmMsgsBox">
@@ -632,9 +765,11 @@ Vue.createApp({
           </div>
         </div>
       </div>
-      <div class="chat-input">
-        <textarea v-model="dmInput" placeholder="私聊消息..." @keyup.enter="sendDM" rows="1"></textarea>
-        <button class="btn" @click="sendDM">→</button>
+      <div class="chat-input-wrap">
+        <div class="chat-input">
+          <textarea v-model="dmInput" placeholder="私聊消息..." @keyup.enter="sendDM" rows="1"></textarea>
+          <button class="btn" @click="sendDM">发送</button>
+        </div>
       </div>
     </div>
 
@@ -645,10 +780,10 @@ Vue.createApp({
         <button class="btn" @click="doEnterChannel" :disabled="channelLoading">{{channelLoading ? '...' : '进入'}}</button>
       </div>
       <div class="channel-card" v-for="g in groups" :key="g.id" @click="doJoinGroup(g.id)">
-        <h3>{{g.name}}</h3>
-        <p>成员: {{g.memberCount}}</p>
+        <h3>💬 {{g.name}}</h3>
+        <p>👥 成员: {{g.memberCount}}</p>
       </div>
-      <div class="card" v-if="groups.length === 0" style="text-align:center;color:var(--muted);font-size:13px">
+      <div class="card" v-if="groups.length === 0" style="text-align:center;color:var(--muted);font-size:14px">
         暂无频道<br><small>请联系管理员创建频道</small>
       </div>
     </div>
@@ -656,24 +791,24 @@ Vue.createApp({
     <!-- 好友列表 -->
     <div v-else-if="!currentGroup && mainTab === 'friends'">
       <div class="card">
-        <div style="font-size:13px;margin-bottom:8px">好友请求</div>
+        <div style="font-size:14px;margin-bottom:10px;font-weight:500">📨 好友请求</div>
         <div v-for="r in friendRequests" :key="r.requestId" class="friend-item">
           <div class="friend-avatar">{{r.nickname ? r.nickname.charAt(0) : '?'}}</div>
           <div class="friend-info"><div class="friend-name">{{r.nickname}}</div></div>
           <button class="btn sm" @click="acceptFriend(r.userId)">接受</button>
         </div>
-        <div v-if="friendRequests.length === 0" style="color:var(--muted);font-size:12px">暂无好友请求</div>
+        <div v-if="friendRequests.length === 0" style="color:var(--muted);font-size:13px">暂无好友请求</div>
       </div>
       <div class="card">
-        <div style="font-size:13px;margin-bottom:8px">好友列表</div>
+        <div style="font-size:14px;margin-bottom:10px;font-weight:500">👥 好友列表</div>
         <div v-for="f in friends" :key="f.id" class="friend-item" @click="startDM(f)">
           <div class="friend-avatar"><img v-if="f.avatar" :src="f.avatar"><span v-else>{{f.nickname ? f.nickname.charAt(0) : '?'}}</span></div>
           <div class="friend-info">
             <div class="friend-name">{{f.nickname}}</div>
-            <div class="friend-status" :class="{online: f.online}">{{f.online ? '在线' : '离线'}}</div>
+            <div class="friend-status" :class="{online: f.online}">{{f.online ? '🟢 在线' : '⚫ 离线'}}</div>
           </div>
         </div>
-        <div v-if="friends.length === 0" style="color:var(--muted);font-size:12px">暂无好友</div>
+        <div v-if="friends.length === 0" style="color:var(--muted);font-size:13px">暂无好友</div>
       </div>
     </div>
 
@@ -681,27 +816,33 @@ Vue.createApp({
     <div v-else-if="currentGroup" class="card chat-wrap">
       <div class="chat-header">
         <div>
-          <h3>{{currentGroup.name}}</h3>
-          <div style="font-size:11px;color:var(--muted)">成员: {{currentGroup.memberCount}}</div>
+          <h3>💬 {{currentGroup.name}}</h3>
+          <div class="chat-header-info">👥 成员: {{currentGroup.memberCount}}</div>
         </div>
         <button class="btn sm" @click="doLeaveGroup">← 返回</button>
       </div>
       <div class="chat-msgs" ref="msgsBox">
         <div class="msg-row" v-for="m in messages" :key="m.id" :class="{me: m.senderId === user.id}">
           <div class="msg-avatar" @click.stop="openUserMenu($event, m.senderId, m.senderNickname)">{{m.senderNickname ? m.senderNickname.charAt(0) : '?'}}</div>
-          <div class="msg-bubble" :class="m.senderId === user.id ? 'out' : 'in'">
-            <div class="msg-nick" v-if="m.senderId !== user.id">{{m.senderNickname}}</div>
-            <div v-if="m.msgType === 'image'"><img class="msg-img" :src="m.content" @click="previewImage(m.content)"></div>
-            <div v-else v-html="renderMsg(m)"></div>
-            <div class="msg-time">{{formatTime(m.createdAt)}}</div>
+          <div class="msg-content">
+            <div class="msg-bubble" :class="m.senderId === user.id ? 'out' : 'in'">
+              <div class="msg-nick" v-if="m.senderId !== user.id">{{m.senderNickname}}</div>
+              <div v-html="renderMsg(m)"></div>
+              <div class="msg-time">{{formatTime(m.createdAt)}}</div>
+            </div>
+            <button v-if="m.senderId === user.id && m.msgType === 'text'" class="msg-action" @click="recallMessage(m.id)" style="margin-top:4px">撤回</button>
           </div>
-          <button v-if="m.senderId === user.id" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer" @click="recallMessage(m.id)">撤回</button>
         </div>
       </div>
-      <div class="chat-input">
-        <label class="upload-btn" v-if="hasPerm('file_upload')">📷<input type="file" accept="image/*,.txt" @change="uploadFile"></label>
-        <textarea v-model="msgInput" placeholder="消息..." @keyup.enter="doSendMsg" rows="1"></textarea>
-        <button class="btn" @click="doSendMsg">→</button>
+      <div class="chat-input-wrap">
+        <div class="chat-input">
+          <div class="chat-tools">
+            <label class="tool-btn" v-if="canUpload" title="发送图片">📷<input type="file" accept="image/*" @change="uploadFile" style="display:none"></label>
+            <label class="tool-btn" v-if="canUpload" title="发送文件">📎<input type="file" accept=".txt,.pdf,.doc,.docx" @change="uploadFile" style="display:none"></label>
+          </div>
+          <textarea v-model="msgInput" placeholder="输入消息..." @keyup.enter="doSendMsg" rows="1"></textarea>
+          <button class="btn" @click="doSendMsg">发送</button>
+        </div>
       </div>
     </div>
   </div>
@@ -709,13 +850,13 @@ Vue.createApp({
   <!-- 管理面板 -->
   <div class="modal-mask" v-if="showAdmin" @click.self="showAdmin = false">
     <div class="modal" style="max-width:500px">
-      <div class="modal-header"><h3>管理面板</h3><button class="modal-close" @click="showAdmin = false">×</button></div>
+      <div class="modal-header"><h3>⚙️ 管理面板</h3><button class="modal-close" @click="showAdmin = false">×</button></div>
       <div class="modal-body">
         <div class="admin-tabs">
-          <button class="admin-tab" :class="{active: adminTab === 'users'}" @click="adminTab = 'users'; loadUsers()">用户</button>
-          <button class="admin-tab" :class="{active: adminTab === 'groups'}" @click="adminTab = 'groups'; loadAllGroups()">频道</button>
-          <button class="admin-tab" :class="{active: adminTab === 'words'}" @click="adminTab = 'words'; loadWords()">敏感词</button>
-          <button class="admin-tab" :class="{active: adminTab === 'stats'}" @click="adminTab = 'stats'; loadStats()">统计</button>
+          <button class="admin-tab" :class="{active: adminTab === 'users'}" @click="adminTab = 'users'; loadUsers()">👥 用户</button>
+          <button class="admin-tab" :class="{active: adminTab === 'groups'}" @click="adminTab = 'groups'; loadAllGroups()">💬 频道</button>
+          <button class="admin-tab" :class="{active: adminTab === 'words'}" @click="adminTab = 'words'; loadWords()">🚫 敏感词</button>
+          <button class="admin-tab" :class="{active: adminTab === 'stats'}" @click="adminTab = 'stats'; loadStats()">📊 统计</button>
         </div>
         <div class="admin-section" :class="{active: adminTab === 'users'}">
           <div class="card" v-if="hasPerm('user_create')">
@@ -727,7 +868,7 @@ Vue.createApp({
           <div class="item-card" v-for="u in users" :key="u.id">
             <div class="item-header"><span class="item-title">{{u.nickname}} <span class="badge" :class="u.status === 'banned' ? 'error' : (u.online ? 'success' : '')">{{u.status === 'banned' ? '已封禁' : (u.online ? '在线' : '离线')}}</span></span></div>
             <div class="item-info">{{u.uid}}</div>
-            <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
               <button class="btn sm" v-if="hasPerm('user_ban') && u.status !== 'banned' && u.role !== 'admin'" @click="doBanUser(u.uid)">封禁</button>
               <button class="btn sm" v-if="hasPerm('user_ban') && u.status === 'banned'" @click="doUnbanUser(u.uid)">解封</button>
               <button class="btn sm" v-if="hasPerm('user_mute')" @click="doMuteUser(u.uid)">禁言</button>
@@ -741,9 +882,9 @@ Vue.createApp({
             <button class="btn full" @click="doCreateGroup" :disabled="createGroupLoading">{{createGroupLoading ? '创建中...' : '创建频道'}}</button>
           </div>
           <div class="item-card" v-for="g in allGroups" :key="g.id">
-            <div class="item-header"><span class="item-title">{{g.name}}</span><span class="badge success">{{g.memberCount}}人</span></div>
+            <div class="item-header"><span class="item-title">💬 {{g.name}}</span><span class="badge success">{{g.memberCount}}人</span></div>
             <div class="item-info">{{g.id}}</div>
-            <div style="margin-top:6px;display:flex;gap:4px">
+            <div style="margin-top:8px;display:flex;gap:6px">
               <button class="btn sm danger" v-if="hasPerm('group_delete')" @click="doDeleteGroup(g.id)">删除</button>
               <button class="btn sm" v-if="hasPerm('message_delete')" @click="doClearGroupMessages(g.id)">清空消息</button>
             </div>
@@ -761,11 +902,11 @@ Vue.createApp({
           </div>
         </div>
         <div class="admin-section" :class="{active: adminTab === 'stats'}">
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-            <div class="item-card" style="text-align:center"><div style="font-size:20px;color:var(--accent)">{{stats.users?.total || 0}}</div><div style="font-size:10px;color:var(--muted)">用户总数</div></div>
-            <div class="item-card" style="text-align:center"><div style="font-size:20px;color:var(--accent)">{{stats.users?.online || 0}}</div><div style="font-size:10px;color:var(--muted)">在线用户</div></div>
-            <div class="item-card" style="text-align:center"><div style="font-size:20px;color:var(--accent)">{{stats.groups?.total || 0}}</div><div style="font-size:10px;color:var(--muted)">频道总数</div></div>
-            <div class="item-card" style="text-align:center"><div style="font-size:20px;color:var(--accent)">{{stats.messages?.total || 0}}</div><div style="font-size:10px;color:var(--muted)">消息总数</div></div>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value">{{stats.users?.total || 0}}</div><div class="stat-label">用户总数</div></div>
+            <div class="stat-card"><div class="stat-value">{{stats.users?.online || 0}}</div><div class="stat-label">在线用户</div></div>
+            <div class="stat-card"><div class="stat-value">{{stats.groups?.total || 0}}</div><div class="stat-label">频道总数</div></div>
+            <div class="stat-card"><div class="stat-value">{{stats.messages?.total || 0}}</div><div class="stat-label">消息总数</div></div>
           </div>
         </div>
       </div>
@@ -775,34 +916,50 @@ Vue.createApp({
   <!-- 权限管理 -->
   <div class="modal-mask" v-if="showPermModal" @click.self="showPermModal = false">
     <div class="modal">
-      <div class="modal-header"><h3>权限管理 - {{permTarget?.nickname}}</h3><button class="modal-close" @click="showPermModal = false">×</button></div>
+      <div class="modal-header"><h3>🔐 权限管理 - {{permTarget?.nickname}}</h3><button class="modal-close" @click="showPermModal = false">×</button></div>
       <div class="modal-body">
-        <div v-for="p in allPermissions" :key="p.name" style="margin-bottom:6px">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <div v-for="p in allPermissions" :key="p.name" style="margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
             <input type="checkbox" :checked="hasUserPerm(p.name)" @change="togglePerm(p.name)">
-            <span style="font-size:12px">{{p.name}}</span>
+            <span style="font-size:13px">{{p.name}}</span>
           </label>
         </div>
-        <button class="btn full" @click="savePerms" style="margin-top:12px">保存</button>
+        <button class="btn full" @click="savePerms" style="margin-top:16px">保存</button>
       </div>
     </div>
   </div>
 
   <!-- 用户菜单 -->
   <div class="user-menu" v-if="userMenu.show" :style="{left: userMenu.x + 'px', top: userMenu.y + 'px'}" @click.stop>
-    <div style="padding:6px;border-bottom:1px solid var(--border);margin-bottom:6px;font-weight:500">{{userMenu.nickname}}</div>
-    <button class="user-menu-item" @click="startDMFromMenu">私聊</button>
-    <button class="user-menu-item" @click="doAddFriend">添加好友</button>
+    <div class="user-menu-header">
+      <div class="msg-avatar">{{userMenu.nickname ? userMenu.nickname.charAt(0) : '?'}}</div>
+      <div>
+        <div style="font-weight:500">{{userMenu.nickname}}</div>
+        <div style="font-size:11px" :style="{color: userMenu.online ? 'var(--success)' : 'var(--muted)'}">{{userMenu.online ? '🟢 在线' : '⚫ 离线'}}</div>
+      </div>
+    </div>
+    <button class="user-menu-item" @click="startDMFromMenu">💬 私聊</button>
+    <button class="user-menu-item" @click="doAddFriend">👥 添加好友</button>
     <template v-if="canManageUser && userMenu.userId !== user.id">
-      <button class="user-menu-item" @click="doMuteUser(userMenu.uid)">禁言</button>
-      <button class="user-menu-item danger" @click="doBanUser(userMenu.uid)">封禁</button>
-      <button class="user-menu-item danger" @click="doKickUser(userMenu.uid)">踢出</button>
+      <button class="user-menu-item" @click="doMuteUser(userMenu.uid)">🔇 禁言</button>
+      <button class="user-menu-item danger" @click="doBanUser(userMenu.uid)">🚫 封禁</button>
+      <button class="user-menu-item danger" @click="doKickUser(userMenu.uid)">👢 踢出</button>
     </template>
   </div>
 
   <!-- 图片预览 -->
   <div class="image-preview" v-if="previewImageUrl" @click="previewImageUrl = null">
     <img :src="previewImageUrl">
+  </div>
+
+  <!-- 上传进度 -->
+  <div class="upload-progress" v-if="showUploadProgress">
+    <div class="upload-progress-inner">
+      <div style="color:var(--accent);font-size:16px">上传中...</div>
+      <div class="upload-progress-bar">
+        <div class="upload-progress-fill" :style="{width: uploadProgress + '%'}"></div>
+      </div>
+    </div>
   </div>
 </div>
 `
