@@ -141,17 +141,14 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 
 <!-- 频道列表 -->
 <div v-if="!currentGroup">
-<div class="channel-input">
-<input class="input" v-model="channelInput" placeholder="输入频道名进入或创建" @keyup.enter="doEnterChannel">
-<button class="btn" @click="doEnterChannel" :disabled="channelLoading">{{ channelLoading ? '...' : '进入' }}</button>
-</div>
 <div class="channel-list">
 <div class="channel-card" v-for="g in groups" :key="g.id" @click="doJoinGroup(g.id)">
 <h3>{{ g.name }}</h3>
 <p>成员: {{ g.memberCount }}</p>
 </div>
 <div class="card" v-if="groups.length === 0" style="text-align:center;color:var(--muted);font-size:13px">
-暂无频道，输入频道名创建或进入
+暂无频道<br>
+<small>请联系管理员创建频道</small>
 </div>
 </div>
 </div>
@@ -229,6 +226,12 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 
 <!-- 频道管理 -->
 <div class="admin-section" :class="{active: adminTab === 'groups'}">
+<div class="card" v-if="hasPerm('group_create')">
+<input class="input" v-model="newGroup.name" placeholder="频道名称" style="margin-bottom:8px">
+<button class="btn full" @click="doCreateGroup" :disabled="createGroupLoading">
+{{ createGroupLoading ? '创建中...' : '创建频道' }}
+</button>
+</div>
 <div class="item-card" v-for="g in allGroups" :key="g.id">
 <div class="item-header">
 <span class="item-title">{{ g.name }}</span>
@@ -240,8 +243,8 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 </div>
 </div>
 <div class="card" v-if="allGroups.length === 0" style="text-align:center;color:var(--muted);font-size:13px">
-暂无频道数据<br>
-<small>请先在主页创建或进入频道</small>
+暂无频道<br>
+<small>在上方创建新频道</small>
 </div>
 </div>
 
@@ -346,6 +349,8 @@ const loginError = ref('');
 const loginLoading = ref(false);
 const newUser = reactive({ uid: '', nickname: '', password: '' });
 const createUserLoading = ref(false);
+const newGroup = reactive({ name: '' });
+const createGroupLoading = ref(false);
 const newWord = reactive({ word: '', replacement: '***' });
 const userMenu = reactive({ show: false, x: 0, y: 0, uid: '', userId: '', nickname: '' });
 const msgsBox = ref(null);
@@ -651,6 +656,24 @@ async function loadAllGroups() {
   }
 }
 
+async function doCreateGroup() {
+  if (!newGroup.name || !newGroup.name.trim()) {
+    alert('请输入频道名称');
+    return;
+  }
+  createGroupLoading.value = true;
+  const d = await api('/api/groups', { method: 'POST', body: JSON.stringify({ name: newGroup.name.trim() }) });
+  createGroupLoading.value = false;
+  if (d.success) {
+    alert('频道创建成功: ' + newGroup.name);
+    newGroup.name = '';
+    loadAllGroups();
+    loadGroups();
+  } else {
+    alert('创建失败: ' + (d.error || '未知错误'));
+  }
+}
+
 async function doDeleteGroup(id) {
   if (!confirm('确定删除该频道?')) return;
   const d = await api('/api/admin/groups/' + id, { method: 'DELETE' });
@@ -773,14 +796,14 @@ onMounted(() => {
 return {
   loggedIn, user, token, theme, groups, currentGroup, messages, msgInput, channelInput, channelLoading,
   isAdmin, userPerms, showAdmin, adminTab, users, allGroups, words, stats,
-  loginForm, loginError, loginLoading, newUser, createUserLoading, newWord, userMenu, msgsBox,
+  loginForm, loginError, loginLoading, newUser, createUserLoading, newGroup, createGroupLoading, newWord, userMenu, msgsBox,
   showPermModal, permTarget, permTargetPerms, allPermissions,
   canAccessAdmin, canManageUser, hasPerm, hasUserPerm,
   doLogin, doLogout, loadGroups, doEnterChannel, doJoinGroup, doLeaveGroup,
   loadMessages, doSendMsg, renderMsg, formatTime, toggleTheme,
   openUserMenu, doAddFriend, doDirectChat, openAdmin,
   loadUsers, doCreateUser, doBanUser, doUnbanUser, doMuteUser,
-  loadAllGroups, doDeleteGroup, loadWords, doAddWord, doDeleteWord, loadStats,
+  loadAllGroups, doCreateGroup, doDeleteGroup, loadWords, doAddWord, doDeleteWord, loadStats,
   openPermModal, togglePerm, savePerms
 };
 }

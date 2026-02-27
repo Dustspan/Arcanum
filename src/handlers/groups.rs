@@ -64,7 +64,15 @@ pub async fn list_my_groups(State(state): State<AppState>, headers: HeaderMap) -
     let groups: Vec<(String, String)> = sqlx::query_as(
         "SELECT g.id, g.name FROM groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = ?"
     ).bind(&claims.sub).fetch_all(&state.db).await?;
-    Ok(Json(json!({"success":true,"data":groups.iter().map(|g|json!({"id":g.0,"name":g.1})).collect::<Vec<_>>()})))
+    
+    let mut result = Vec::new();
+    for g in groups {
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM group_members WHERE group_id = ?")
+            .bind(&g.0).fetch_one(&state.db).await?;
+        result.push(json!({"id":g.0,"name":g.1,"memberCount":count}));
+    }
+    
+    Ok(Json(json!({"success":true,"data":result})))
 }
 
 pub async fn list_all_groups(State(state): State<AppState>, headers: HeaderMap) -> Result<Json<serde_json::Value>> {
