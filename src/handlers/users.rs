@@ -328,3 +328,100 @@ pub async fn get_user_info(
         }
     })))
 }
+
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateProfileRequest {
+    pub nickname: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChangePasswordRequest {
+    pub old_password: String,
+    pub new_password: String,
+}
+
+/// 更新个人资料
+pub async fn update_profile(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Json(req): Json<UpdateProfileRequest>
+) -> Result<Json<serde_json::Value>> {
+    let claims = super::auth::get_claims_full(&headers, &state).await?;
+    
+    if let Some(nickname) = &req.nickname {
+        if nickname.is_empty() || nickname.len() > 20 {
+            return Err(crate::error::AppError::BadRequest("昵称长度1-20字符".to_string()));
+        }
+        
+        sqlx::query("UPDATE users SET nickname = ? WHERE id = ?")
+            .bind(nickname).bind(&claims.sub)
+            .execute(&state.db).await?;
+    }
+    
+    // 获取更新后的信息
+    let user: Option<(String, String, Option<String>)> = sqlx::query_as(
+        "SELECT uid, nickname, avatar FROM users WHERE id = ?"
+    )
+    .bind(&claims.sub)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    let user = user.ok_or_else(|| crate::error::AppError::Internal("用户不存在".to_string()))?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "uid": user.0,
+            "nickname": user.1,
+            "avatar": user.2
+        }
+    })))
+}
+
+/// 修改密码
+pub async fn change_password(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Json(req): Json<ChangePasswordRequest>
+) -> Result<Json<serde_json::Value>> {
+    let claims = super::auth::get_claims_full(&headers, &state).await?;
+    
+    // 验证新密码
+    if req.new_password.len() < 6 {
+        return Err(crate::error::AppError::BadRequest("新密码至少6位".to_string()));
+    }
+    
+    // 获取当前密码
+    let current_hash: Option<String> = sqlx::query_scalar("SELECT password_hash FROM users WHERE id = ?")
+        .bind(&claims.sub)
+        .fetch_optional(&state.db)
+        .await?;
+    
+    let current_hash = current_hash.ok_or_else(|| crate::error::AppError::Internal("用户不存在".to_string()))?;
+    
+    // 验证旧密码
+    use argon2::{password_hash::PasswordHash, Argon2, password_hash::PasswordVerifier};
+    let parsed = PasswordHash::new(&current_hash)
+        .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
+    
+    if Argon2::default().verify_password(req.old_password.as_bytes(), &parsed).is_err() {
+        return Err(crate::error::AppError::Auth("旧密码错误".to_string()));
+    }
+    
+    // 更新密码
+    let new_hash = hash_password(&req.new_password)?;
+    sqlx::query("UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?")
+        .bind(&new_hash).bind(&claims.sub)
+        .execute(&state.db)
+        .await?;
+    
+    // 使缓存失效
+    state.cache.invalidate(&claims.sub).await;
+    
+    Ok(Json(json!({
+        "success": true,
+        "message": "密码已更新，请重新登录"
+    })))
+}

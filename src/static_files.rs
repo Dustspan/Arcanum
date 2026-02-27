@@ -183,6 +183,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 <div id="myChannels"></div>
 <div class="card hidden" id="adminEntry"><button class="btn full" id="showAdminBtn">管理面板</button></div>
+<div style="margin-top:12px"><button class="btn full" id="settingsBtn">⚙ 个人设置</button></div>
 </div>
 
 <div id="chatView" class="hidden">
@@ -329,6 +330,35 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <button class="modal-close" id="closeMembersModalBtn">×</button>
 </div>
 <div id="membersList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
+</div>
+</div>
+
+<div class="modal-overlay hidden" id="settingsModal">
+<div class="modal">
+<div class="modal-header">
+<h3>个人设置</h3>
+<button class="modal-close" id="closeSettingsModalBtn">×</button>
+</div>
+<div style="padding:8px">
+<div class="settings-section">
+<h4 style="font-size:13px;color:var(--accent);margin-bottom:8px">修改昵称</h4>
+<input class="input" id="newNickname" placeholder="新昵称">
+<button class="btn full" style="margin-top:8px" id="updateNicknameBtn">保存昵称</button>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h4 style="font-size:13px;color:var(--accent);margin-bottom:8px">修改密码</h4>
+<input class="input" type="password" id="oldPassword" placeholder="当前密码" style="margin-bottom:8px">
+<input class="input" type="password" id="newPassword" placeholder="新密码（至少6位）">
+<button class="btn full warn" style="margin-top:8px" id="changePasswordBtn">修改密码</button>
+</div>
+<div class="settings-section" style="margin-top:16px">
+<h4 style="font-size:13px;color:var(--accent);margin-bottom:8px">修改头像</h4>
+<label class="btn full" style="display:block;text-align:center">
+上传头像
+<input type="file" accept="image/*" id="avatarInput" style="display:none">
+</label>
+</div>
+</div>
 </div>
 </div>
 
@@ -935,6 +965,61 @@ $("membersModal").classList.remove("hidden");
 }catch(e){}
 }
 
+// 个人设置
+function showSettings(){
+$("newNickname").value=user.nickname;
+$("oldPassword").value="";
+$("newPassword").value="";
+$("settingsModal").classList.remove("hidden");
+}
+
+async function updateNickname(){
+const nickname=$("newNickname").value.trim();
+if(!nickname){alert("请输入昵称");return}
+if(nickname.length>20){alert("昵称最多20字符");return}
+try{
+const d=await api("/api/users/profile",{method:"PUT",body:JSON.stringify({nickname})});
+if(d.success){
+user.nickname=nickname;
+localStorage.setItem("u",JSON.stringify(user));
+alert("昵称已更新");
+}else{alert(d.error||"更新失败")}
+}catch(e){alert("更新失败")}
+}
+
+async function changePassword(){
+const oldPwd=$("oldPassword").value;
+const newPwd=$("newPassword").value;
+if(!oldPwd||!newPwd){alert("请填写完整");return}
+if(newPwd.length<6){alert("新密码至少6位");return}
+try{
+const d=await api("/api/users/password",{method:"PUT",body:JSON.stringify({old_password:oldPwd,new_password:newPwd})});
+if(d.success){
+alert("密码已更新，请重新登录");
+localStorage.clear();
+location.reload();
+}else{alert(d.error||"修改失败")}
+}catch(e){alert("修改失败")}
+}
+
+async function uploadAvatar(e){
+const file=e.target.files[0];
+if(!file)return;
+if(file.size>2*1024*1024){alert("图片太大（最大2MB）");return}
+const formData=new FormData();
+formData.append("file",file);
+try{
+const r=await fetch(API+"/api/users/avatar",{method:"POST",headers:{"Authorization":"Bearer "+token},body:formData});
+const d=await r.json();
+if(d.success){
+user.avatar=d.data.avatar;
+localStorage.setItem("u",JSON.stringify(user));
+alert("头像已更新");
+}else{alert(d.error||"上传失败")}
+}catch(err){alert("上传失败")}
+e.target.value="";
+}
+
 async function showUserMenu(e,sid,nick){
 e.stopPropagation();
 const menu=$("userMenu");
@@ -1070,6 +1155,12 @@ $("searchBtn").onclick=showSearch;
 $("closeMembersModalBtn").onclick=function(){$("membersModal").classList.add("hidden")};
 $("membersModal").onclick=function(e){if(e.target===this)$("membersModal").classList.add("hidden")};
 $("membersBtn").onclick=showMembers;
+$("settingsBtn").onclick=showSettings;
+$("closeSettingsModalBtn").onclick=function(){$("settingsModal").classList.add("hidden")};
+$("settingsModal").onclick=function(e){if(e.target===this)$("settingsModal").classList.add("hidden")};
+$("updateNicknameBtn").onclick=updateNickname;
+$("changePasswordBtn").onclick=changePassword;
+$("avatarInput").onchange=uploadAvatar;
 $("searchInput").oninput=function(){
 clearTimeout(searchTimeout);
 searchTimeout=setTimeout(doSearch,300);
