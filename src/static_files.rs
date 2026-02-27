@@ -40,6 +40,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 24px);height:calc(100dvh - 24px)}
 .chat-header{display:flex;align-items:center;padding:12px;border-bottom:1px solid var(--border);flex-shrink:0}
 .chat-header h2{flex:1;text-align:center;font-size:15px;font-weight:500}
+.chat-header-actions{display:flex;gap:4px}
 .chat-back{background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:4px 8px}
 .chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;background:#050505}
 .msg-row{display:flex;align-items:flex-start;gap:8px}
@@ -60,6 +61,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .typing-indicator{padding:4px 12px;font-size:11px;color:var(--muted);font-style:italic}
 .group-announcement{padding:8px 12px;background:rgba(0,255,255,.1);border-bottom:1px solid var(--border);font-size:12px;color:var(--accent);cursor:pointer}
 .group-announcement:hover{background:rgba(0,255,255,.15)}
+.search-result-item{padding:8px;border-bottom:1px solid var(--border);cursor:pointer}
+.search-result-item:hover{background:rgba(255,255,255,.05)}
+.search-result-nick{font-size:12px;color:var(--accent);margin-bottom:4px}
+.search-result-content{font-size:13px;color:var(--text);word-break:break-all}
 .msg-image{max-width:100%;max-height:300px;border-radius:8px;cursor:pointer;display:block}
 .msg-file{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;margin-top:4px}
 .msg-file-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center}
@@ -160,7 +165,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div class="chat-header">
 <button class="chat-back" id="leaveChatBtn">←</button>
 <h2 id="chatTitle">聊天</h2>
+<div class="chat-header-actions">
+<button class="chat-action-btn" id="searchBtn" title="搜索">🔍</button>
 <button class="chat-action-btn" id="groupInfoBtn" title="频道信息">ℹ</button>
+</div>
 </div>
 <div class="group-announcement hidden" id="groupAnnouncement"></div>
 <div class="chat-msgs" id="msgs"></div>
@@ -271,6 +279,19 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <button class="modal-close" id="closeGroupInfoModalBtn">×</button>
 </div>
 <div id="groupInfoContent"></div>
+</div>
+</div>
+
+<div class="modal-overlay hidden" id="searchModal">
+<div class="modal">
+<div class="modal-header">
+<h3>搜索消息</h3>
+<button class="modal-close" id="closeSearchModalBtn">×</button>
+</div>
+<div style="padding:8px">
+<input class="input" id="searchInput" placeholder="输入关键词搜索...">
+<div id="searchResults" style="margin-top:12px;max-height:300px;overflow-y:auto"></div>
+</div>
 </div>
 </div>
 
@@ -764,6 +785,41 @@ $("groupAnnouncement").classList.add("hidden");
 }catch(e){alert("保存失败")}
 }
 
+// 搜索功能
+let searchTimeout=null;
+
+async function doSearch(){
+if(!groupId)return;
+const q=$("searchInput").value.trim();
+if(q.length<2){
+$("searchResults").innerHTML='<div class="empty">请输入至少2个字符</div>';
+return;
+}
+try{
+const d=await api("/api/messages/group/"+groupId+"/search?q="+encodeURIComponent(q));
+if(d.success){
+if(d.data.length===0){
+$("searchResults").innerHTML='<div class="empty">未找到相关消息</div>';
+}else{
+$("searchResults").innerHTML=d.data.map(m=>{
+const isMe=m.senderId===user.id;
+return'<div class="search-result-item" data-mid="'+m.id+'">'+
+'<div class="search-result-nick">'+esc(m.senderNickname)+' <span class="msg-time">'+formatTime(m.createdAt)+'</span></div>'+
+'<div class="search-result-content">'+esc(m.content)+'</div>'+
+'</div>';
+}).join("");
+}
+}
+}catch(e){$("searchResults").innerHTML='<div class="empty">搜索失败</div>'}
+}
+
+function showSearch(){
+$("searchModal").classList.remove("hidden");
+$("searchInput").value="";
+$("searchResults").innerHTML="";
+$("searchInput").focus();
+}
+
 async function showUserMenu(e,sid,nick){
 e.stopPropagation();
 const menu=$("userMenu");
@@ -891,6 +947,13 @@ $("muteModal").onclick=function(e){if(e.target===this)$("muteModal").classList.a
 $("closeGroupInfoModalBtn").onclick=function(){$("groupInfoModal").classList.add("hidden")};
 $("groupInfoModal").onclick=function(e){if(e.target===this)$("groupInfoModal").classList.add("hidden")};
 $("groupInfoBtn").onclick=showGroupInfo;
+$("closeSearchModalBtn").onclick=function(){$("searchModal").classList.add("hidden")};
+$("searchModal").onclick=function(e){if(e.target===this)$("searchModal").classList.add("hidden")};
+$("searchBtn").onclick=showSearch;
+$("searchInput").oninput=function(){
+clearTimeout(searchTimeout);
+searchTimeout=setTimeout(doSearch,300);
+};
 // 滚动加载更多消息
 $("msgs").addEventListener("scroll",function(){
 if(this.scrollTop<50&&!isLoadingMore){

@@ -439,3 +439,74 @@ pub async fn mark_group_read(
     
     Ok(Json(json!({"success": true, "data": {"markedCount": unread_msgs.len()}})))
 }
+
+/// 搜索消息
+#[derive(Debug, serde::Deserialize)]
+pub struct SearchParams {
+    pub q: String,          // 搜索关键词
+    pub limit: Option<i64>, // 结果数量限制
+}
+
+pub async fn search_messages(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Path(group_id): Path<String>,
+    Query(params): Query<SearchParams>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    // 检查用户是否是频道成员
+    let member: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM group_members WHERE group_id = ? AND user_id = ?"
+    )
+    .bind(&group_id).bind(&claims.sub)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    if member.is_none() {
+        return Err(crate::error::AppError::Forbidden);
+    }
+    
+    // 验证搜索关键词
+    let keyword = params.q.trim();
+    if keyword.is_empty() || keyword.len() < 2 {
+        return Err(crate::error::AppError::BadRequest("搜索关键词至少2个字符".to_string()));
+    }
+    if keyword.len() > 50 {
+        return Err(crate::error::AppError::BadRequest("搜索关键词最多50个字符".to_string()));
+    }
+    
+    let limit = params.limit.unwrap_or(20).min(50);
+    let search_pattern = format!("%{}%", keyword);
+    
+    // 搜索消息内容
+    let messages: Vec<(String, String, String, String, String, Option<String>, i64, String, Option<String>)> = 
+        sqlx::query_as(r#"
+            SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.created_at, u.avatar
+            FROM messages m 
+            JOIN users u ON m.sender_id = u.id 
+            WHERE m.group_id = ? AND m.content LIKE ?
+            ORDER BY m.created_at DESC
+            LIMIT ?
+        "#)
+        .bind(&group_id).bind(&search_pattern).bind(limit)
+        .fetch_all(&state.db)
+        .await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": messages.iter().map(|m| json!({
+            "id": m.0,
+            "senderId": m.1,
+            "senderNickname": m.2,
+            "senderAvatar": m.8,
+            "content": m.3,
+            "msgType": m.4,
+            "fileName": m.5,
+            "fileSize": m.6,
+            "createdAt": m.7
+        })).collect::<Vec<_>>(),
+        "keyword": keyword,
+        "count": messages.len()
+    })))
+}

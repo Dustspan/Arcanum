@@ -81,6 +81,7 @@ async fn main() -> anyhow::Result<()> {
         // 消息路由
         .route("/api/messages", post(handlers::messages::send_message))
         .route("/api/messages/group/:id", get(handlers::messages::get_messages))
+        .route("/api/messages/group/:id/search", get(handlers::messages::search_messages))
         .route("/api/messages/group/:id", delete(handlers::messages::clear_messages))
         .route("/api/messages/:id", delete(handlers::messages::delete_message))
         .route("/api/messages/:id/recall", post(handlers::messages::recall_message))
