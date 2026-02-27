@@ -336,6 +336,9 @@ else $("cipherErr").textContent=d.error||"频道不存在";
 }catch(e){$("cipherErr").textContent="网络错误"}
 }
 
+let oldestCreatedAt=null;
+let isLoadingMore=false;
+
 async function loadMsgs(){
 if(!groupId)return;
 try{
@@ -346,10 +349,40 @@ el.innerHTML="";
 displayedMsgIds.clear();
 d.data.forEach(m=>addMessage(m,false));
 el.scrollTop=el.scrollHeight;
+// 保存最旧消息时间用于分页
+if(d.pagination&&d.pagination.oldestCreatedAt){
+oldestCreatedAt=d.pagination.oldestCreatedAt;
+}
 // 标记所有消息已读
 api("/api/messages/group/"+groupId+"/read",{method:"POST"});
 }
 }catch(e){}
+}
+
+async function loadMoreMsgs(){
+if(!groupId||isLoadingMore||!oldestCreatedAt)return;
+isLoadingMore=true;
+try{
+const d=await api("/api/messages/group/"+groupId+"?before="+encodeURIComponent(oldestCreatedAt));
+if(d.success&&d.data.length>0){
+const el=$("msgs");
+const oldScrollHeight=el.scrollHeight;
+// 在顶部插入旧消息
+d.data.reverse().forEach(m=>{
+if(!displayedMsgIds.has(m.id)){
+displayedMsgIds.add(m.id);
+el.innerHTML=renderMessage(m)+el.innerHTML;
+}
+});
+// 保持滚动位置
+el.scrollTop=el.scrollHeight-oldScrollHeight;
+// 更新最旧消息时间
+if(d.pagination&&d.pagination.oldestCreatedAt){
+oldestCreatedAt=d.pagination.oldestCreatedAt;
+}
+}
+}catch(e){}
+isLoadingMore=false;
 }
 
 function addMessage(m,scroll=true){
@@ -724,6 +757,12 @@ $("savePermsBtn").onclick=savePermissions;
 $("confirmMuteBtn").onclick=async function(){if(!menuTargetUser)return;await api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})});$("muteModal").classList.add("hidden");loadUsers()};
 $("permModal").onclick=function(e){if(e.target===this)$("permModal").classList.add("hidden")};
 $("muteModal").onclick=function(e){if(e.target===this)$("muteModal").classList.add("hidden")};
+// 滚动加载更多消息
+$("msgs").addEventListener("scroll",function(){
+if(this.scrollTop<50&&!isLoadingMore){
+loadMoreMsgs();
+}
+});
 };
 })();
 </script>

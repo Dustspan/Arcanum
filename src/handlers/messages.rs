@@ -77,22 +77,67 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
     })))
 }
 
-pub async fn get_messages(State(state): State<AppState>, headers: HeaderMap, Path(group_id): Path<String>) -> Result<Json<serde_json::Value>> {
+use axum::extract::Query;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct PaginationParams {
+    pub before: Option<String>,  // 加载此时间之前的消息
+    pub limit: Option<i64>,       // 每页数量，默认50
+}
+
+pub async fn get_messages(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Path(group_id): Path<String>,
+    Query(pagination): Query<PaginationParams>
+) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
     
     let member: Option<String> = sqlx::query_scalar("SELECT id FROM group_members WHERE group_id = ? AND user_id = ?")
         .bind(&group_id).bind(&claims.sub).fetch_optional(&state.db).await?;
     if member.is_none() { return Err(crate::error::AppError::Forbidden); }
     
+    let limit = pagination.limit.unwrap_or(50).min(100);
+    
     let messages: Vec<(String, String, String, String, String, Option<String>, i64, i64, String, Option<String>)> = 
-        sqlx::query_as(r#"
-            SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.created_at, u.avatar
-            FROM messages m 
-            JOIN users u ON m.sender_id = u.id 
-            WHERE m.group_id = ? 
-            ORDER BY m.created_at ASC
-        "#)
-            .bind(&group_id).fetch_all(&state.db).await?;
+        if let Some(before) = &pagination.before {
+            // 分页查询：加载指定时间之前的消息
+            sqlx::query_as(r#"
+                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.created_at, u.avatar
+                FROM messages m 
+                JOIN users u ON m.sender_id = u.id 
+                WHERE m.group_id = ? AND m.created_at < ?
+                ORDER BY m.created_at DESC
+                LIMIT ?
+            "#)
+                .bind(&group_id).bind(before).bind(limit)
+                .fetch_all(&state.db).await?
+        } else {
+            // 初始加载：获取最新的消息
+            sqlx::query_as(r#"
+                SELECT m.id, m.sender_id, u.nickname, m.content, m.type, m.file_name, m.file_size, m.burn_after, m.created_at, u.avatar
+                FROM messages m 
+                JOIN users u ON m.sender_id = u.id 
+                WHERE m.group_id = ? 
+                ORDER BY m.created_at DESC
+                LIMIT ?
+            "#)
+                .bind(&group_id).bind(limit)
+                .fetch_all(&state.db).await?
+        };
+    
+    // 获取总数
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages WHERE group_id = ?")
+        .bind(&group_id)
+        .fetch_one(&state.db)
+        .await?;
+    
+    // 反转顺序（从旧到新显示）
+    let mut messages = messages;
+    messages.reverse();
+    
+    let has_more = messages.len() as i64 == limit && (messages.len() as i64) < total;
     
     Ok(Json(json!({
         "success": true,
@@ -107,7 +152,13 @@ pub async fn get_messages(State(state): State<AppState>, headers: HeaderMap, Pat
             "fileSize": m.6,
             "burnAfter": m.7,
             "createdAt": m.8
-        })).collect::<Vec<_>>()
+        })).collect::<Vec<_>>(),
+        "pagination": {
+            "total": total,
+            "hasMore": has_more,
+            "oldestCreatedAt": messages.first().map(|m| m.8.clone()),
+            "newestCreatedAt": messages.last().map(|m| m.8.clone())
+        }
     })))
 }
 
