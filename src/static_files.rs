@@ -156,6 +156,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .item-card .item-actions{display:flex;gap:4px;flex-wrap:wrap}
 .item-card .item-actions button{flex:1;min-width:50px}
 .empty{text-align:center;color:var(--muted);font-size:13px;padding:24px}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.stat-card{background:linear-gradient(135deg,rgba(0,255,255,.05),rgba(255,0,255,.05));border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;position:relative;overflow:hidden}
+.stat-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.stat-value{font-size:24px;font-weight:600;color:var(--accent);margin-bottom:4px}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
 .user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;z-index:1000;min-width:180px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
 .user-menu-header{padding:8px;border-bottom:1px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:10px}
 .user-menu-avatar{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#000;overflow:hidden;flex-shrink:0}
@@ -274,6 +279,7 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 <button class="btn full" id="mentionsBtn" style="position:relative">🔔 提及<span class="mention-badge hidden" id="mentionBadge">0</span></button>
 </div>
 <div style="margin-top:8px"><button class="btn full" id="settingsBtn">⚙ 个人设置</button></div>
+<div style="margin-top:8px"><button class="btn full danger" id="logoutBtn">退出登录</button></div>
 </div>
 
 <div id="chatView" class="hidden">
@@ -313,6 +319,9 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 <div class="admin-tab on" data-tab="users">用户</div>
 <div class="admin-tab" data-tab="groups">频道</div>
 <div class="admin-tab" data-tab="ips">IP</div>
+<div class="admin-tab" data-tab="words">敏感词</div>
+<div class="admin-tab" data-tab="logs">日志</div>
+<div class="admin-tab" data-tab="stats">统计</div>
 </div>
 
 <div id="usersSection" class="admin-section on">
@@ -345,6 +354,32 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 <div class="card">
 <h3 style="font-size:13px;color:var(--warn);margin-bottom:10px">IP封禁列表</h3>
 <div id="ipList"></div>
+</div>
+</div>
+
+<div id="wordsSection" class="admin-section">
+<div class="card">
+<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">敏感词管理</h3>
+<div class="admin-form">
+<input class="input" id="newWord" placeholder="敏感词">
+<input class="input" id="wordReplacement" placeholder="替换为 (默认***)">
+<button class="btn full" id="addWordBtn">添加</button>
+</div>
+<div id="wordList" style="margin-top:12px"></div>
+</div>
+</div>
+
+<div id="logsSection" class="admin-section">
+<div class="card">
+<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">操作日志</h3>
+<div id="logList" style="max-height:400px;overflow-y:auto"></div>
+</div>
+</div>
+
+<div id="statsSection" class="admin-section">
+<div class="card">
+<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">系统统计</h3>
+<div id="statsContent"></div>
 </div>
 </div>
 
@@ -1027,6 +1062,10 @@ document.querySelectorAll(".admin-tab").forEach(t=>t.classList.remove("on"));
 document.querySelectorAll(".admin-section").forEach(s=>s.classList.remove("on"));
 event.target.classList.add("on");
 $(name+"Section").classList.add("on");
+// 加载对应数据
+if(name==="words")loadSensitiveWords();
+if(name==="logs")loadAuditLogs();
+if(name==="stats")loadStatistics();
 }
 function checkAdminPermissions(){
 const perms=user.permissions||[];
@@ -1109,6 +1148,60 @@ try{
 const d=await api("/api/admin/permissions");
 if(d.success)allPermissions=d.data;
 }catch(e){}
+}
+
+async function loadSensitiveWords(){
+try{
+const d=await api("/api/admin/sensitive-words");
+const el=$("wordList");
+if(d.success)el.innerHTML=d.data.length?d.data.map(w=>'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(w.word)+'</span><button class="btn sm danger" data-act="delWord" data-wid="'+w.id+'">删除</button></div><div class="item-info">替换为: '+esc(w.replacement)+'</div></div>').join(""):'<div class="empty">暂无敏感词</div>';
+}catch(e){}
+}
+
+async function addSensitiveWord(){
+const word=$("newWord").value.trim();
+if(!word){alert("请输入敏感词");return}
+const replacement=$("wordReplacement").value.trim()||"***";
+try{
+const d=await api("/api/admin/sensitive-words",{method:"POST",body:JSON.stringify({word,replacement})});
+if(d.success){$("newWord").value="";$("wordReplacement").value="";loadSensitiveWords()}
+else alert(d.error||"添加失败");
+}catch(e){alert("添加失败")}
+}
+
+async function loadAuditLogs(){
+try{
+const d=await api("/api/admin/audit-logs");
+const el=$("logList");
+if(d.success)el.innerHTML=d.data.length?d.data.map(l=>'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(l.action)+'</span><span class="item-info">'+l.createdAt+'</span></div>'+(l.userId?'<div class="item-info">用户: '+esc(l.userId)+'</div>':'')+(l.details?'<div class="item-info">'+esc(l.details)+'</div>':'')+'</div>').join(""):'<div class="empty">暂无日志</div>';
+}catch(e){}
+}
+
+async function loadStatistics(){
+try{
+const d=await api("/api/admin/statistics");
+const el=$("statsContent");
+if(d.success){
+const s=d.data;
+el.innerHTML='<div class="stats-grid">'+
+'<div class="stat-card"><div class="stat-value">'+s.users.total+'</div><div class="stat-label">用户总数</div></div>'+
+'<div class="stat-card"><div class="stat-value">'+s.users.online+'</div><div class="stat-label">在线用户</div></div>'+
+'<div class="stat-card"><div class="stat-value">'+s.groups.total+'</div><div class="stat-label">频道总数</div></div>'+
+'<div class="stat-card"><div class="stat-value">'+s.messages.total+'</div><div class="stat-label">消息总数</div></div>'+
+'<div class="stat-card"><div class="stat-value">'+s.messages.today+'</div><div class="stat-label">今日消息</div></div>'+
+'<div class="stat-card"><div class="stat-value">'+s.direct.messages+'</div><div class="stat-label">私聊消息</div></div>'+
+'<div class="stat-card"><div class="stat-value">'+s.direct.friendships+'</div><div class="stat-label">好友关系</div></div>'+
+'<div class="stat-card"><div class="stat-value">'+formatUptime(s.system.uptime)+'</div><div class="stat-label">运行时间</div></div>'+
+'</div>';
+}
+}catch(e){}
+}
+
+function formatUptime(secs){
+const d=Math.floor(secs/86400);
+const h=Math.floor((secs%86400)/3600);
+const m=Math.floor((secs%3600)/60);
+return(d>0?d+'天 ':'')+h+'时'+m+'分';
 }
 
 async function showGroupInfo(){
@@ -1409,6 +1502,20 @@ alert("好友请求已发送");
 }catch(e){alert("添加失败")}
 }
 
+// 登出
+async function logout(){
+try{
+await api("/api/auth/logout",{method:"POST"});
+}catch(e){}
+localStorage.clear();
+token="";
+user=null;
+ws&&ws.close();
+$("mainPage").classList.add("hidden");
+$("loginPage").classList.remove("hidden");
+$("loginErr").textContent="";
+}
+
 // 个人设置
 function showSettings(){
 $("newNickname").value=user.nickname;
@@ -1592,6 +1699,7 @@ if(act==="perm")openPermModal(t.dataset.uid,t.dataset.nick);
 if(act==="clearGroup"&&confirm("确定清空该频道所有消息?")){await api("/api/messages/group/"+t.dataset.gid,{method:"DELETE"});alert("已清空")}
 if(act==="deleteGroup"&&confirm("确定删除该频道?")){await api("/api/admin/groups/"+t.dataset.gid,{method:"DELETE"});loadGroups()}
 if(act==="unbanIp"){await api("/api/admin/ips/"+t.dataset.ip,{method:"DELETE"});loadIps()}
+if(act==="delWord"){await api("/api/admin/sensitive-words/"+t.dataset.wid,{method:"DELETE"});loadSensitiveWords()}
 if(act==="menuMute"){closeUserMenu();if(menuTargetUser)openMuteModal(menuTargetUser.uid,menuTargetUser.nick)}
 if(act==="menuUnmute"){closeUserMenu();if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/unmute",{method:"PUT"});alert("已解除禁言")}}
 if(act==="menuKick"){closeUserMenu();if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/kick",{method:"PUT"});alert("已踢出")}}
@@ -1641,6 +1749,7 @@ if(d.success){$("chanRes").innerHTML='<div class="success">创建成功: '+name+
 else $("chanRes").innerHTML='<div class="err">'+d.error+'</div>';
 });
 };
+$("addWordBtn").onclick=addSensitiveWord;
 $("closeUserMenuBtn").onclick=closeUserMenu;
 $("closePermModalBtn").onclick=function(){$("permModal").classList.add("hidden")};
 $("closeMuteModalBtn").onclick=function(){$("muteModal").classList.add("hidden")};
@@ -1658,6 +1767,7 @@ $("closeMembersModalBtn").onclick=function(){$("membersModal").classList.add("hi
 $("membersModal").onclick=function(e){if(e.target===this)$("membersModal").classList.add("hidden")};
 $("membersBtn").onclick=showMembers;
 $("settingsBtn").onclick=showSettings;
+$("logoutBtn").onclick=logout;
 $("closeSettingsModalBtn").onclick=function(){$("settingsModal").classList.add("hidden")};
 $("mentionsBtn").onclick=showMentions;
 $("closeMentionsModalBtn").onclick=function(){$("mentionsModal").classList.add("hidden")};
