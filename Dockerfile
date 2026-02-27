@@ -1,15 +1,20 @@
-FROM rust:1.85-bookworm as builder
+# 构建阶段
+FROM rust:1.75-alpine AS builder
+RUN apk add --no-cache musl-dev
 WORKDIR /app
-COPY Cargo.toml ./
-RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release && rm -rf src
 COPY src ./src
 RUN touch src/main.rs && cargo build --release
 
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+# 运行阶段
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
+COPY --from=builder /app/target/release/arcanum /app/
 RUN mkdir -p /app/data
-COPY --from=builder /app/target/release/arcanum /usr/local/bin/
+ENV PORT=3000
+ENV DATA_DIR=/app/data
 EXPOSE 3000
-ENV DATABASE_URL=sqlite:/app/data/arcanum.db?mode=rwc
-CMD ["arcanum"]
+CMD ["./arcanum"]

@@ -48,6 +48,17 @@ async fn main() -> anyhow::Result<()> {
     
     let app = Router::new()
         .route("/", get(|| async { Html(static_files::INDEX_HTML) }))
+        // PWA
+        .route("/manifest.json", get(|| async { 
+            axum::response::IntoResponse::into_response(
+                ([(axum::http::header::CONTENT_TYPE, "application/json")], static_files::MANIFEST_JSON)
+            )
+        }))
+        .route("/sw.js", get(|| async {
+            axum::response::IntoResponse::into_response(
+                ([(axum::http::header::CONTENT_TYPE, "application/javascript")], static_files::SERVICE_WORKER_JS)
+            )
+        }))
         // 认证路由
         .route("/api/auth/login", post(handlers::auth::login))
         .route("/api/auth/logout", post(handlers::auth::logout))

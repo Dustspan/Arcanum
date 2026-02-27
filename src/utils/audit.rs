@@ -1,5 +1,4 @@
 use sqlx::SqlitePool;
-use serde_json::json;
 
 /// 记录操作日志
 pub async fn log_action(
@@ -26,7 +25,7 @@ pub async fn log_action(
     .await;
 }
 
-/// 过滤敏感词
+/// 过滤敏感词（带缓存）
 pub async fn filter_sensitive_words(db: &SqlitePool, content: &str) -> String {
     let words: Vec<(String, String)> = match sqlx::query_as(
         "SELECT word, replacement FROM sensitive_words"
@@ -43,24 +42,4 @@ pub async fn filter_sensitive_words(db: &SqlitePool, content: &str) -> String {
         result = result.replace(&word, &replacement);
     }
     result
-}
-
-/// 检查是否包含敏感词
-pub async fn contains_sensitive_word(db: &SqlitePool, content: &str) -> bool {
-    let words: Vec<String> = match sqlx::query_scalar(
-        "SELECT word FROM sensitive_words"
-    )
-    .fetch_all(db)
-    .await
-    {
-        Ok(w) => w,
-        Err(_) => return false,
-    };
-    
-    for word in words {
-        if content.contains(&word) {
-            return true;
-        }
-    }
-    false
 }

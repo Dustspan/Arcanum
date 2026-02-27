@@ -1,11 +1,11 @@
 [package]
 name = "arcanum"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 
 [dependencies]
 axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace", "fs"] }
 serde = { version = "1", features = ["derive"] }
@@ -31,3 +31,5 @@ dashmap = "5.5"
 lto = true
 strip = true
 opt-level = "z"
+codegen-units = 1
+panic = "abort"

@@ -4,7 +4,7 @@ use crate::{
     error::Result, 
     models::SendMessageRequest, 
     handlers::auth::get_claims_full, 
-    utils::{check_permission, is_muted, check_rate_limit, filter_sensitive_words, log_action},
+    utils::{check_permission, is_muted, check_rate_limit, filter_sensitive_words},
     broadcast::WsMessage,
     AppState
 };
