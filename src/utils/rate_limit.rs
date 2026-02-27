@@ -79,37 +79,3 @@ pub async fn check_rate_limit(
         }
     }
 }
-
-/// 获取剩余请求次数
-pub async fn get_remaining_requests(
-    pool: &SqlitePool,
-    user_id: &str,
-    action_type: &str,
-    config: &Config
-) -> Result<i64> {
-    let current: Option<(i64, String)> = sqlx::query_as(
-        "SELECT count, window_start FROM rate_limits WHERE user_id = ? AND action_type = ?"
-    )
-    .bind(user_id)
-    .bind(action_type)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-    
-    match current {
-        Some((count, window_start_str)) => {
-            let window_start_dt = chrono::DateTime::parse_from_rfc3339(&window_start_str)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .unwrap_or_else(|_| chrono::Utc::now());
-            
-            let window_duration = chrono::Duration::seconds(config.rate_limit_window_secs);
-            
-            if chrono::Utc::now() - window_start_dt > window_duration {
-                return Ok(config.rate_limit_messages as i64);
-            }
-            
-            Ok(std::cmp::max(0, config.rate_limit_messages as i64 - count))
-        }
-        None => Ok(config.rate_limit_messages as i64),
-    }
-}

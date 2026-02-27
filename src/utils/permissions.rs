@@ -2,34 +2,6 @@ use sqlx::SqlitePool;
 use crate::error::{AppError, Result};
 use crate::models::Claims;
 
-/// 检查用户是否拥有指定权限
-pub async fn has_permission(pool: &SqlitePool, user_id: &str, permission_name: &str) -> Result<bool> {
-    // 管理员拥有所有权限
-    let role: Option<String> = sqlx::query_scalar("SELECT role FROM users WHERE id = ?")
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-    
-    if role.as_deref() == Some("admin") {
-        return Ok(true);
-    }
-    
-    // 检查用户权限
-    let has: Option<i64> = sqlx::query_scalar(r#"
-        SELECT 1 FROM user_permissions up
-        JOIN permissions p ON up.permission_id = p.id
-        WHERE up.user_id = ? AND p.name = ?
-    "#)
-    .bind(user_id)
-    .bind(permission_name)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
-    
-    Ok(has.is_some())
-}
-
 /// 获取用户所有权限
 pub async fn get_user_permissions(pool: &SqlitePool, user_id: &str) -> Result<Vec<String>> {
     // 管理员拥有所有权限
@@ -121,14 +93,5 @@ pub fn check_permission(claims: &Claims, permission: &str) -> Result<()> {
         Ok(())
     } else {
         Err(AppError::Forbidden)
-    }
-}
-
-/// 检查是否为管理员
-pub fn check_admin(claims: &Claims) -> Result<()> {
-    if claims.role != "admin" { 
-        Err(AppError::Forbidden) 
-    } else { 
-        Ok(()) 
     }
 }
