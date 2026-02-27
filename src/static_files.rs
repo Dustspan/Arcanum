@@ -383,14 +383,21 @@ async function api(path, options = {}) {
   try {
     const r = await fetch(API + path, { ...options, headers });
     const text = await r.text();
-    console.log('API', path, 'status:', r.status, 'response:', text.substring(0, 200));
     try {
-      return JSON.parse(text);
+      const data = JSON.parse(text);
+      if (!data.success && data.error) {
+        // 只对管理API显示错误
+        if (path.startsWith('/api/admin')) {
+          alert('API错误 [' + r.status + ']: ' + data.error);
+        }
+      }
+      return data;
     } catch (e) {
-      return { success: false, error: 'Invalid JSON: ' + text.substring(0, 100) };
+      alert('JSON解析失败: ' + text.substring(0, 100));
+      return { success: false, error: 'Invalid JSON' };
     }
   } catch (e) {
-    console.error('API Error:', e);
+    alert('网络错误: ' + e.message);
     return { success: false, error: e.message };
   }
 }
@@ -575,17 +582,13 @@ async function loadAllPermissions() {
 }
 
 async function loadUsers() {
-  console.log('loadUsers called');
   try {
     const d = await api('/api/admin/users');
-    console.log('loadUsers response:', d);
     if (d.success) {
       users.value = d.data;
-    } else {
-      console.error('loadUsers error:', d.error);
     }
   } catch (e) {
-    console.error('loadUsers exception:', e);
+    // 错误已在api函数中处理
   }
 }
 
@@ -633,19 +636,17 @@ async function doMuteUser(uid) {
 }
 
 async function loadAllGroups() {
-  console.log('loadAllGroups called, token:', token.value ? 'exists' : 'missing');
   try {
     const d = await api('/api/admin/groups');
-    console.log('loadAllGroups response:', d);
     if (d.success) {
       allGroups.value = d.data;
-      console.log('allGroups loaded:', allGroups.value.length, 'groups');
+      if (allGroups.value.length === 0) {
+        alert('频道列表为空，请先在主页创建频道');
+      }
     } else {
-      console.error('loadAllGroups error:', d.error);
-      alert('加载频道失败: ' + (d.error || '未知错误'));
+      alert('加载频道失败: ' + (d.error || JSON.stringify(d)));
     }
   } catch (e) {
-    console.error('loadAllGroups exception:', e);
     alert('加载频道异常: ' + e.message);
   }
 }
