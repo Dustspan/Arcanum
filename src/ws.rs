@@ -4,7 +4,7 @@ use axum::{
 };
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
-use crate::{AppState, error::AppError, models::Claims, utils::verify_token};
+use crate::{AppState, error::AppError, models::Claims, utils::verify_token, utils::is_muted, utils::check_rate_limit};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WsMessage { pub event: String, pub data: serde_json::Value }
@@ -106,10 +106,27 @@ async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMess
     if msg.event != "message" { return; }
     
     #[derive(serde::Deserialize)]
-    struct MsgData { group_id: String, content: String, burn_after: Option<i64> }
+    struct MsgData { 
+        group_id: String, 
+        content: String, 
+        burn_after: Option<i64>,
+        msg_type: Option<String>,
+        file_name: Option<String>,
+        file_size: Option<i64>,
+    }
     
     let Ok(d) = serde_json::from_value::<MsgData>(msg.data) else { return };
     if d.content.is_empty() || d.content.len() > 5000 { return; }
+    
+    // 检查禁言
+    if is_muted(&state.db, user_id).await.unwrap_or(false) {
+        return;
+    }
+    
+    // 检查速率限制
+    if !check_rate_limit(&state.db, user_id, "message", &state.config).await.unwrap_or(false) {
+        return;
+    }
     
     let member: Option<String> = sqlx::query_scalar("SELECT id FROM group_members WHERE group_id = ? AND user_id = ?")
         .bind(&d.group_id).bind(user_id).fetch_optional(&state.db).await.ok().flatten();
@@ -118,13 +135,21 @@ async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMess
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
     let burn = d.burn_after.unwrap_or(0);
+    let msg_type = d.msg_type.unwrap_or_else(|| "text".to_string());
     
-    if sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, burn_after, created_at) VALUES (?, ?, ?, ?, 'text', ?, ?)")
-        .bind(&id).bind(user_id).bind(&d.group_id).bind(&d.content).bind(burn).bind(&now)
+    if sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, file_name, file_size, burn_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(&id).bind(user_id).bind(&d.group_id).bind(&d.content).bind(&msg_type)
+        .bind(&d.file_name).bind(d.file_size.unwrap_or(0)).bind(burn).bind(&now)
         .execute(&state.db).await.is_ok() {
+        
+        // 获取发送者头像
+        let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
+            .bind(user_id).fetch_optional(&state.db).await.ok().flatten();
+        
         let _ = state.tx.send(WsMessage { event: "message".into(), data: serde_json::json!({
             "id": id, "groupId": d.group_id, "senderId": user_id, "senderNickname": nickname,
-            "content": d.content, "burnAfter": burn, "createdAt": now
+            "senderAvatar": avatar, "content": d.content, "msgType": msg_type,
+            "fileName": d.file_name, "fileSize": d.file_size, "burnAfter": burn, "createdAt": now
         })});
     }
 }

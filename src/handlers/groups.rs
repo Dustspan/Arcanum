@@ -1,6 +1,6 @@
 use axum::{extract::{State, Path}, http::HeaderMap, Json};
 use serde_json::json;
-use crate::{error::Result, models::{EnterGroupRequest, CreateGroupRequest}, handlers::auth::{get_claims, check_admin, get_claims_full}, utils::hash_password, AppState};
+use crate::{error::Result, models::{EnterGroupRequest, CreateGroupRequest}, handlers::auth::{get_claims, get_claims_full}, utils::hash_password, utils::check_permission, AppState};
 
 pub async fn enter_by_name(State(state): State<AppState>, headers: HeaderMap, Json(req): Json<EnterGroupRequest>) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
@@ -32,6 +32,8 @@ fn verify_cipher(name: &str, hash: &str) -> Result<bool> {
 
 pub async fn create_group(State(state): State<AppState>, headers: HeaderMap, Json(req): Json<CreateGroupRequest>) -> Result<Json<serde_json::Value>> {
     let claims = get_claims(&headers, &state.config)?;
+    check_permission(&claims, "group_create")?;
+    
     if req.name.is_empty() { return Err(crate::error::AppError::BadRequest("频道名不能为空".to_string())); }
     
     let exists: Option<String> = sqlx::query_scalar("SELECT id FROM groups WHERE name = ?").bind(&req.name).fetch_optional(&state.db).await?;
@@ -60,7 +62,7 @@ pub async fn list_my_groups(State(state): State<AppState>, headers: HeaderMap) -
 
 pub async fn list_all_groups(State(state): State<AppState>, headers: HeaderMap) -> Result<Json<serde_json::Value>> {
     let claims = get_claims(&headers, &state.config)?;
-    check_admin(&claims)?;
+    check_permission(&claims, "group_view")?;
     
     let groups: Vec<(String, String, String, String)> = sqlx::query_as(
         "SELECT g.id, g.name, g.owner_id, g.created_at FROM groups g ORDER BY g.created_at DESC"
@@ -78,7 +80,7 @@ pub async fn list_all_groups(State(state): State<AppState>, headers: HeaderMap) 
 
 pub async fn delete_group(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Result<Json<serde_json::Value>> {
     let claims = get_claims(&headers, &state.config)?;
-    check_admin(&claims)?;
+    check_permission(&claims, "group_delete")?;
     
     sqlx::query("DELETE FROM messages WHERE group_id = ?").bind(&id).execute(&state.db).await.ok();
     sqlx::query("DELETE FROM group_members WHERE group_id = ?").bind(&id).execute(&state.db).await.ok();

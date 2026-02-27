@@ -3,12 +3,21 @@ use crate::config::Config;
 use crate::error::{AppError, Result};
 use crate::models::Claims;
 
-pub fn generate_token(id: &str, uid: &str, nickname: &str, role: &str, token_version: i64, config: &Config) -> Result<String> {
+pub fn generate_token(
+    id: &str, 
+    uid: &str, 
+    nickname: &str, 
+    role: &str, 
+    permissions: Vec<String>,
+    token_version: i64, 
+    config: &Config
+) -> Result<String> {
     let claims = Claims {
         sub: id.to_string(), 
         uid: uid.to_string(), 
         nickname: nickname.to_string(),
         role: role.to_string(),
+        permissions,
         token_version,
         exp: chrono::Utc::now().timestamp() + config.jwt_expires,
     };

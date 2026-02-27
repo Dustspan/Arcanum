@@ -3,7 +3,7 @@ use serde_json::json;
 use crate::{
     error::Result, 
     models::LoginRequest, 
-    utils::{verify_password, generate_token, verify_token, extract_ip},
+    utils::{verify_password, generate_token, verify_token, extract_ip, get_user_permissions},
     AppState
 };
 
@@ -22,8 +22,8 @@ pub async fn login(
     }
     
     // 查找用户
-    let user: Option<(String, String, String, String, String, i64)> = 
-        sqlx::query_as("SELECT id, uid, nickname, password_hash, account_status, token_version FROM users WHERE uid = ?")
+    let user: Option<(String, String, String, String, String, i64, Option<String>)> = 
+        sqlx::query_as("SELECT id, uid, nickname, password_hash, account_status, token_version, avatar FROM users WHERE uid = ?")
             .bind(&req.uid).fetch_optional(&state.db).await?;
     
     let user = user.ok_or_else(|| crate::error::AppError::Auth("用户不存在".to_string()))?;
@@ -42,11 +42,13 @@ pub async fn login(
         .bind(new_version).bind(&ip).bind(&user.0)
         .execute(&state.db).await?;
     
-    // 获取角色
+    // 获取角色和权限
     let role: String = sqlx::query_scalar("SELECT role FROM users WHERE id = ?")
         .bind(&user.0).fetch_one(&state.db).await?;
     
-    let token = generate_token(&user.0, &user.1, &user.2, &role, new_version, &state.config)?;
+    let permissions = get_user_permissions(&state.db, &user.0).await?;
+    
+    let token = generate_token(&user.0, &user.1, &user.2, &role, permissions.clone(), new_version, &state.config)?;
     
     Ok(Json(json!({
         "success": true,
@@ -56,7 +58,9 @@ pub async fn login(
                 "id": user.0,
                 "uid": user.1,
                 "nickname": user.2,
-                "role": role
+                "avatar": user.6,
+                "role": role,
+                "permissions": permissions
             }
         }
     })))
@@ -80,11 +84,13 @@ pub async fn me(
 ) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
     
-    let user: Option<(String, String, String, String)> = 
-        sqlx::query_as("SELECT id, uid, nickname, role FROM users WHERE id = ? AND account_status = 'active'")
+    let user: Option<(String, String, String, String, Option<String>)> = 
+        sqlx::query_as("SELECT id, uid, nickname, role, avatar FROM users WHERE id = ? AND account_status = 'active'")
             .bind(&claims.sub).fetch_optional(&state.db).await?;
     
     let user = user.ok_or(crate::error::AppError::Kicked)?;
+    
+    let permissions = get_user_permissions(&state.db, &user.0).await?;
     
     Ok(Json(json!({
         "success": true,
@@ -92,7 +98,9 @@ pub async fn me(
             "id": user.0,
             "uid": user.1,
             "nickname": user.2,
-            "role": user.3
+            "avatar": user.4,
+            "role": user.3,
+            "permissions": permissions
         }
     })))
 }
@@ -140,8 +148,4 @@ pub async fn get_claims_full(
         }
         None => Err(crate::error::AppError::Kicked),
     }
-}
-
-pub fn check_admin(claims: &crate::models::Claims) -> Result<()> {
-    if claims.role != "admin" { Err(crate::error::AppError::Forbidden) } else { Ok(()) }
 }
