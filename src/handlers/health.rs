@@ -102,14 +102,18 @@ pub async fn get_statistics(
     headers: axum::http::HeaderMap
 ) -> crate::error::Result<Json<serde_json::Value>> {
     let claims = crate::handlers::auth::get_claims_full(&headers, &state).await?;
-    crate::utils::check_permission(&claims, "admin")?;
+    
+    // 允许管理员或有admin权限的用户访问
+    if claims.role != "admin" {
+        crate::utils::check_permission(&claims, "admin")?;
+    }
     
     // 用户统计
     let total_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
         .fetch_one(&state.db).await?;
     let online_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE online = 1")
         .fetch_one(&state.db).await?;
-    let banned_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE status = 'banned'")
+    let banned_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE account_status = 'banned'")
         .fetch_one(&state.db).await?;
     
     // 频道统计
