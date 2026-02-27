@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::{routing::{get, post, delete, put}, Router, response::Html};
 use sqlx::SqlitePool;
 use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer, services::ServeDir};
+use handlers::health::SystemStats;
 
 mod config; mod db; mod error; mod handlers; mod models; mod utils; mod ws; mod static_files; mod storage; mod broadcast; mod cache;
 
@@ -14,6 +15,7 @@ pub struct AppStateInner {
     pub config: config::Config,
     pub storage: storage::FileStorage,
     pub cache: cache::PermissionCache,
+    pub stats: SystemStats,
 }
 
 #[tokio::main]
@@ -29,6 +31,7 @@ async fn main() -> anyhow::Result<()> {
     let storage = storage::FileStorage::new(&config.data_dir)?;
     let broadcast_manager = broadcast::BroadcastManager::new();
     let permission_cache = cache::PermissionCache::new();
+    let system_stats = SystemStats::new();
     
     let state: AppState = Arc::new(AppStateInner { 
         db, 
@@ -36,6 +39,7 @@ async fn main() -> anyhow::Result<()> {
         config, 
         storage,
         cache: permission_cache,
+        stats: system_stats,
     });
     
     // 静态文件服务
@@ -83,7 +87,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/messages/file/:id", post(handlers::messages::upload_file))
         // WebSocket
         .route("/ws", get(ws::ws_handler))
-        .route("/health", get(|| async { "OK" }))
+        .route("/health", get(handlers::health::health_check))
+        .route("/health/simple", get(handlers::health::health_simple))
         // 静态文件服务
         .nest_service("/files", files_service)
         .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any))
