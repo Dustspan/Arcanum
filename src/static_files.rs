@@ -29,11 +29,9 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 
 .input{width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:14px;outline:none}
 .input:focus{border-color:var(--accent)}
-textarea.input{resize:none;min-height:80px}
 
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
 .err{color:var(--error);font-size:13px;padding:8px;background:rgba(255,51,102,.1);border-radius:4px;margin-top:8px}
-.success-msg{color:var(--success);font-size:13px;padding:8px;background:rgba(0,255,136,.1);border-radius:4px;margin-top:8px}
 
 .login-logo{font-size:28px;font-weight:700;text-align:center;margin:60px 0 30px;color:var(--accent)}
 .login-form{display:flex;flex-direction:column;gap:12px}
@@ -81,7 +79,6 @@ textarea.input{resize:none;min-height:80px}
 .msg-file-icon{font-size:20px}
 .msg-file-info{font-size:12px}
 .msg-mention{color:var(--accent);cursor:pointer}
-.msg-mention:hover{text-decoration:underline}
 .reply-preview{background:var(--bg);padding:4px 8px;border-radius:4px;margin-bottom:4px;font-size:11px;border-left:2px solid var(--accent);max-width:200px;overflow:hidden}
 .reply-preview .reply-nick{color:var(--accent)}
 .reply-preview .reply-content{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -93,7 +90,7 @@ textarea.input{resize:none;min-height:80px}
 .chat-input{display:flex;gap:8px;padding:12px;align-items:flex-end}
 .chat-input textarea{flex:1;padding:8px 12px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:16px;font-size:13px;outline:none;resize:none;max-height:80px}
 .chat-input input[type="file"]{display:none}
-.chat-tools{display:flex;gap:4px;flex-direction:column}
+.chat-tools{display:flex;gap:4px}
 .tool-btn{background:var(--bg2);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px}
 .tool-btn:hover{border-color:var(--accent);color:var(--accent)}
 
@@ -108,7 +105,7 @@ textarea.input{resize:none;min-height:80px}
 .members-list{overflow-y:auto;max-height:calc(100% - 45px)}
 .member-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer}
 .member-item:hover{background:var(--bg2)}
-.member-avatar{width:24px;height:24px;border-radius:4px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:10px;color:#000}
+.member-avatar{width:24px;height:24px;border-radius:4px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:10px;color:#000;overflow:hidden}
 .member-avatar img{width:100%;height:100%;object-fit:cover;border-radius:4px}
 .member-info{font-size:12px}
 .member-status{width:6px;height:6px;border-radius:50%;background:var(--success)}
@@ -136,7 +133,6 @@ textarea.input{resize:none;min-height:80px}
 .modal-header h3{font-size:14px}
 .modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
 .modal-body{padding:12px}
-.modal-footer{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
 
 .user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px;z-index:1001;min-width:150px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
 .user-menu-header{padding:6px;border-bottom:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:8px}
@@ -162,30 +158,20 @@ textarea.input{resize:none;min-height:80px}
 .friend-status.online{color:var(--success)}
 .friend-request-badge{background:var(--error);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px}
 
-.search-box{display:flex;gap:8px;margin-bottom:12px}
-.search-results{max-height:200px;overflow-y:auto}
-
 .profile-section{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:16px}
 .profile-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:28px;color:#000;cursor:pointer;overflow:hidden;position:relative}
 .profile-avatar img{width:100%;height:100%;object-fit:cover}
 .profile-avatar .avatar-edit{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.7);font-size:10px;text-align:center;padding:2px}
 
-/* 私聊界面 */
 .dm-header{display:flex;align-items:center;gap:8px;padding:12px;background:var(--card);border-bottom:1px solid var(--border)}
 .dm-back{background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer}
 .dm-title{font-size:14px}
 .dm-status{font-size:10px;color:var(--success)}
 .dm-status.offline{color:var(--muted)}
 
-/* 图片预览 */
 .image-preview{position:fixed;inset:0;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;z-index:2000;cursor:zoom-out}
 .image-preview img{max-width:90%;max-height:90%;object-fit:contain}
 
-/* 消息搜索 */
-.search-panel{background:var(--card);border-bottom:1px solid var(--border);padding:8px}
-.search-panel input{width:100%}
-
-/* 置顶消息 */
 .pinned-msg{background:var(--card);border-bottom:1px solid var(--border);padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:8px}
 .pinned-msg .pin-icon{color:var(--warn)}
 .pinned-msg .pin-content{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -213,7 +199,6 @@ textarea.input{resize:none;min-height:80px}
 
 <!-- 主页 -->
 <div v-else>
-<!-- 头部 -->
 <div class="header">
 <div @click="showProfile = true">
 <h1>{{ user.nickname }}</h1>
@@ -229,16 +214,14 @@ textarea.input{resize:none;min-height:80px}
 <!-- 标签栏 -->
 <div class="tab-bar" v-if="!currentGroup && !dmTarget">
 <div class="tab-item" :class="{active: mainTab === 'channels'}" @click="mainTab = 'channels'">频道</div>
-<div class="tab-item" :class="{active: mainTab === 'friends'}" @click="mainTab = 'friends'; loadFriends()">
-好友<span v-if="friendRequestCount > 0" class="friend-request-badge">{{ friendRequestCount }}</span>
-</div>
+<div class="tab-item" :class="{active: mainTab === 'friends'}" @click="mainTab = 'friends'; loadFriends()">好友<span v-if="friendRequestCount > 0" class="friend-request-badge">{{ friendRequestCount }}</span></div>
 </div>
 
 <!-- 私聊界面 -->
 <div v-if="dmTarget" class="card chat-wrap">
 <div class="dm-header">
 <button class="dm-back" @click="closeDM">←</button>
-<div class="msg-avatar">{{ dmTarget.nickname?.charAt(0) }}</div>
+<div class="msg-avatar">{{ dmTarget.nickname ? dmTarget.nickname.charAt(0) : '?' }}</div>
 <div>
 <div class="dm-title">{{ dmTarget.nickname }}</div>
 <div class="dm-status" :class="{offline: !dmTarget.online}">{{ dmTarget.online ? '在线' : '离线' }}</div>
@@ -246,7 +229,7 @@ textarea.input{resize:none;min-height:80px}
 </div>
 <div class="chat-msgs" ref="dmMsgsBox">
 <div class="msg-row" v-for="m in dmMessages" :key="m.id" :class="{me: m.senderId === user.id}">
-<div class="msg-avatar">{{ m.senderNickname?.charAt(0) }}</div>
+<div class="msg-avatar">{{ m.senderNickname ? m.senderNickname.charAt(0) : '?' }}</div>
 <div class="msg-content">
 <div class="msg-bubble" :class="m.senderId === user.id ? 'out' : 'in'">
 <div class="msg-nick" v-if="m.senderId !== user.id">{{ m.senderNickname }}</div>
@@ -273,7 +256,6 @@ textarea.input{resize:none;min-height:80px}
 <div class="channel-card" v-for="g in groups" :key="g.id" @click="doJoinGroup(g.id)">
 <h3>{{ g.name }}</h3>
 <p>成员: {{ g.memberCount }}</p>
-<span v-if="g.unread > 0" class="unread-badge">{{ g.unread > 99 ? '99+' : g.unread }}</span>
 </div>
 <div class="card" v-if="groups.length === 0" style="text-align:center;color:var(--muted);font-size:13px">
 暂无频道<br><small>请联系管理员创建频道</small>
@@ -289,10 +271,8 @@ textarea.input{resize:none;min-height:80px}
 <span v-if="friendRequests.length > 0" class="badge warn">{{ friendRequests.length }}</span>
 </div>
 <div v-for="r in friendRequests" :key="r.requestId" class="friend-item">
-<div class="friend-avatar">{{ r.nickname?.charAt(0) }}</div>
-<div class="friend-info">
-<div class="friend-name">{{ r.nickname }}</div>
-</div>
+<div class="friend-avatar">{{ r.nickname ? r.nickname.charAt(0) : '?' }}</div>
+<div class="friend-info"><div class="friend-name">{{ r.nickname }}</div></div>
 <button class="btn xs" @click="acceptFriend(r.userId)">接受</button>
 </div>
 <div v-if="friendRequests.length === 0" style="color:var(--muted);font-size:12px">暂无好友请求</div>
@@ -300,7 +280,7 @@ textarea.input{resize:none;min-height:80px}
 <div class="card">
 <div style="font-size:13px;margin-bottom:8px">好友列表</div>
 <div v-for="f in friends" :key="f.id" class="friend-item" @click="startDM(f)">
-<div class="friend-avatar"><img v-if="f.avatar" :src="f.avatar"><span v-else>{{ f.nickname?.charAt(0) }}</span></div>
+<div class="friend-avatar"><img v-if="f.avatar" :src="f.avatar"><span v-else>{{ f.nickname ? f.nickname.charAt(0) : '?' }}</span></div>
 <div class="friend-info">
 <div class="friend-name">{{ f.nickname }}</div>
 <div class="friend-status" :class="{online: f.online}">{{ f.online ? '在线' : '离线' }}</div>
@@ -318,35 +298,25 @@ textarea.input{resize:none;min-height:80px}
 <div class="chat-header-info">
 <span>成员: {{ currentGroup.memberCount }}</span>
 <span @click="showMembers = !showMembers">👥</span>
-<span @click="showSearch = !showSearch">🔍</span>
 </div>
 </div>
-<div>
-<button class="btn sm" @click="doLeaveGroup">← 返回</button>
-</div>
+<div><button class="btn sm" @click="doLeaveGroup">← 返回</button></div>
 </div>
 
-<!-- 置顶消息 -->
 <div v-if="pinnedMessage" class="pinned-msg">
 <span class="pin-icon">📌</span>
 <span class="pin-content"><b>{{ pinnedMessage.senderNickname }}:</b> {{ pinnedMessage.content }}</span>
 <button class="pin-close" @click="pinnedMessage = null">×</button>
 </div>
 
-<!-- 搜索面板 -->
-<div v-if="showSearch" class="search-panel">
-<input class="input" v-model="searchQuery" placeholder="搜索消息..." @keyup.enter="searchMessages">
-</div>
-
-<div class="chat-msgs" ref="msgsBox" @scroll="onMsgScroll">
+<div class="chat-msgs" ref="msgsBox">
 <div class="msg-row" v-for="m in messages" :key="m.id" :class="{me: m.senderId === user.id}">
 <div class="msg-avatar" @click="openUserMenu($event, m.senderId, m.senderNickname)">
-<img v-if="m.senderAvatar" :src="m.senderAvatar"><span v-else>{{ m.senderNickname?.charAt(0) }}</span>
+<img v-if="m.senderAvatar" :src="m.senderAvatar"><span v-else>{{ m.senderNickname ? m.senderNickname.charAt(0) : '?' }}</span>
 </div>
 <div class="msg-content">
 <div class="msg-bubble" :class="{in: m.senderId !== user.id, out: m.senderId === user.id, pinned: m.pinned}">
 <div class="msg-nick" v-if="m.senderId !== user.id">{{ m.senderNickname }}</div>
-<div v-if="m.forwarded" class="forward-tag">转发自 {{ m.originalSender }}</div>
 <div v-if="m.replyInfo" class="reply-preview">
 <span class="reply-nick">{{ m.replyInfo.senderNickname }}</span>: <span class="reply-content">{{ m.replyInfo.content }}</span>
 </div>
@@ -365,7 +335,7 @@ textarea.input{resize:none;min-height:80px}
 
 <div class="chat-input-wrap">
 <div v-if="replyTo" class="reply-bar">
-<span>回复 <b>{{ replyTo.senderNickname }}</b>: {{ replyTo.content?.substring(0,30) }}...</span>
+<span>回复 <b>{{ replyTo.senderNickname }}</b>: {{ replyTo.content ? replyTo.content.substring(0,30) : '' }}...</span>
 <button class="reply-close" @click="replyTo = null">×</button>
 </div>
 <div class="chat-input">
@@ -383,12 +353,11 @@ textarea.input{resize:none;min-height:80px}
 </div>
 </div>
 
-<!-- 成员面板 -->
 <div class="members-panel" :class="{show: showMembers}">
 <h4>成员 ({{ members.length }})</h4>
 <div class="members-list">
 <div class="member-item" v-for="m in members" :key="m.id" @click="openUserMenu($event, m.id, m.nickname)">
-<div class="member-avatar"><img v-if="m.avatar" :src="m.avatar"><span v-else>{{ m.nickname?.charAt(0) }}</span></div>
+<div class="member-avatar"><img v-if="m.avatar" :src="m.avatar"><span v-else>{{ m.nickname ? m.nickname.charAt(0) : '?' }}</span></div>
 <div class="member-info">{{ m.nickname }}</div>
 <div class="member-status" :class="{offline: !m.isOnline}"></div>
 </div>
@@ -400,10 +369,7 @@ textarea.input{resize:none;min-height:80px}
 <!-- 管理面板 -->
 <div class="modal-mask" v-if="showAdmin" @click.self="showAdmin = false">
 <div class="modal" style="max-width:500px">
-<div class="modal-header">
-<h3>管理面板</h3>
-<button class="modal-close" @click="showAdmin = false">×</button>
-</div>
+<div class="modal-header"><h3>管理面板</h3><button class="modal-close" @click="showAdmin = false">×</button></div>
 <div class="modal-body">
 <div class="admin-tabs">
 <button class="admin-tab" :class="{active: adminTab === 'users'}" @click="adminTab = 'users'; loadUsers()">用户</button>
@@ -412,7 +378,6 @@ textarea.input{resize:none;min-height:80px}
 <button class="admin-tab" :class="{active: adminTab === 'stats'}" @click="adminTab = 'stats'; loadStats()">统计</button>
 </div>
 
-<!-- 用户管理 -->
 <div class="admin-section" :class="{active: adminTab === 'users'}">
 <div class="card" v-if="hasPerm('user_create')">
 <input class="input" v-model="newUser.uid" placeholder="UID (留空自动生成)" style="margin-bottom:8px">
@@ -421,9 +386,7 @@ textarea.input{resize:none;min-height:80px}
 <button class="btn full" @click="doCreateUser" :disabled="createUserLoading">{{ createUserLoading ? '创建中...' : '创建用户' }}</button>
 </div>
 <div class="item-card" v-for="u in users" :key="u.id">
-<div class="item-header">
-<span class="item-title">{{ u.nickname }} <span class="badge" :class="u.status === 'banned' ? 'error' : (u.online ? 'success' : '')">{{ u.status === 'banned' ? '已封禁' : (u.online ? '在线' : '离线') }}</span></span>
-</div>
+<div class="item-header"><span class="item-title">{{ u.nickname }} <span class="badge" :class="u.status === 'banned' ? 'error' : (u.online ? 'success' : '')">{{ u.status === 'banned' ? '已封禁' : (u.online ? '在线' : '离线') }}</span></span></div>
 <div class="item-info">{{ u.uid }}</div>
 <div class="perm-list"><span class="perm-tag" v-for="p in (u.permissions || []).slice(0,5)" :key="p">{{ p }}</span></div>
 <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
@@ -435,17 +398,13 @@ textarea.input{resize:none;min-height:80px}
 </div>
 </div>
 
-<!-- 频道管理 -->
 <div class="admin-section" :class="{active: adminTab === 'groups'}">
 <div class="card" v-if="hasPerm('group_create')">
 <input class="input" v-model="newGroup.name" placeholder="频道名称" style="margin-bottom:8px">
 <button class="btn full" @click="doCreateGroup" :disabled="createGroupLoading">{{ createGroupLoading ? '创建中...' : '创建频道' }}</button>
 </div>
 <div class="item-card" v-for="g in allGroups" :key="g.id">
-<div class="item-header">
-<span class="item-title">{{ g.name }}</span>
-<span class="badge success">{{ g.memberCount }}人</span>
-</div>
+<div class="item-header"><span class="item-title">{{ g.name }}</span><span class="badge success">{{ g.memberCount }}人</span></div>
 <div class="item-info">{{ g.id }}</div>
 <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
 <button class="btn sm danger" v-if="hasPerm('group_delete')" @click="doDeleteGroup(g.id)">删除</button>
@@ -454,7 +413,6 @@ textarea.input{resize:none;min-height:80px}
 </div>
 </div>
 
-<!-- 敏感词管理 -->
 <div class="admin-section" :class="{active: adminTab === 'words'}">
 <div class="card" v-if="isAdmin">
 <input class="input" v-model="newWord.word" placeholder="敏感词" style="margin-bottom:8px">
@@ -462,21 +420,17 @@ textarea.input{resize:none;min-height:80px}
 <button class="btn full" @click="doAddWord">添加</button>
 </div>
 <div class="item-card" v-for="w in words" :key="w.id">
-<div class="item-header">
-<span class="item-title">{{ w.word }}</span>
-<button class="btn sm danger" v-if="isAdmin" @click="doDeleteWord(w.id)">删除</button>
-</div>
+<div class="item-header"><span class="item-title">{{ w.word }}</span><button class="btn sm danger" v-if="isAdmin" @click="doDeleteWord(w.id)">删除</button></div>
 <div class="item-info">替换为: {{ w.replacement }}</div>
 </div>
 </div>
 
-<!-- 统计 -->
 <div class="admin-section" :class="{active: adminTab === 'stats'}">
 <div class="stats-grid">
-<div class="stat-card"><div class="stat-value">{{ stats.users?.total || 0 }}</div><div class="stat-label">用户总数</div></div>
-<div class="stat-card"><div class="stat-value">{{ stats.users?.online || 0 }}</div><div class="stat-label">在线用户</div></div>
-<div class="stat-card"><div class="stat-value">{{ stats.groups?.total || 0 }}</div><div class="stat-label">频道总数</div></div>
-<div class="stat-card"><div class="stat-value">{{ stats.messages?.total || 0 }}</div><div class="stat-label">消息总数</div></div>
+<div class="stat-card"><div class="stat-value">{{ stats.users && stats.users.total || 0 }}</div><div class="stat-label">用户总数</div></div>
+<div class="stat-card"><div class="stat-value">{{ stats.users && stats.users.online || 0 }}</div><div class="stat-label">在线用户</div></div>
+<div class="stat-card"><div class="stat-value">{{ stats.groups && stats.groups.total || 0 }}</div><div class="stat-label">频道总数</div></div>
+<div class="stat-card"><div class="stat-value">{{ stats.messages && stats.messages.total || 0 }}</div><div class="stat-label">消息总数</div></div>
 </div>
 </div>
 </div>
@@ -486,14 +440,11 @@ textarea.input{resize:none;min-height:80px}
 <!-- 个人资料 -->
 <div class="modal-mask" v-if="showProfile" @click.self="showProfile = false">
 <div class="modal">
-<div class="modal-header">
-<h3>个人设置</h3>
-<button class="modal-close" @click="showProfile = false">×</button>
-</div>
+<div class="modal-header"><h3>个人设置</h3><button class="modal-close" @click="showProfile = false">×</button></div>
 <div class="modal-body">
 <div class="profile-section">
 <div class="profile-avatar" @click="uploadAvatar">
-<img v-if="user.avatar" :src="user.avatar"><span v-else>{{ user.nickname?.charAt(0) }}</span>
+<img v-if="user.avatar" :src="user.avatar"><span v-else>{{ user.nickname ? user.nickname.charAt(0) : '?' }}</span>
 <div class="avatar-edit">更换</div>
 <input type="file" ref="avatarInput" accept="image/*" @change="doUploadAvatar" style="display:none">
 </div>
@@ -518,10 +469,7 @@ textarea.input{resize:none;min-height:80px}
 <!-- 权限管理 -->
 <div class="modal-mask" v-if="showPermModal" @click.self="showPermModal = false">
 <div class="modal">
-<div class="modal-header">
-<h3>权限管理 - {{ permTarget?.nickname }}</h3>
-<button class="modal-close" @click="showPermModal = false">×</button>
-</div>
+<div class="modal-header"><h3>权限管理 - {{ permTarget ? permTarget.nickname : '' }}</h3><button class="modal-close" @click="showPermModal = false">×</button></div>
 <div class="modal-body">
 <div v-for="p in allPermissions" :key="p.name" style="margin-bottom:6px">
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -537,10 +485,7 @@ textarea.input{resize:none;min-height:80px}
 <!-- 转发消息 -->
 <div class="modal-mask" v-if="forwardMsg" @click.self="forwardMsg = null">
 <div class="modal">
-<div class="modal-header">
-<h3>转发消息</h3>
-<button class="modal-close" @click="forwardMsg = null">×</button>
-</div>
+<div class="modal-header"><h3>转发消息</h3><button class="modal-close" @click="forwardMsg = null">×</button></div>
 <div class="modal-body">
 <div v-for="g in groups" :key="g.id" class="item-card" style="cursor:pointer" @click="doForward(g.id)">
 <span class="item-title">{{ g.name }}</span>
@@ -552,7 +497,7 @@ textarea.input{resize:none;min-height:80px}
 <!-- 用户菜单 -->
 <div class="user-menu" v-if="userMenu.show" :style="{left: userMenu.x + 'px', top: userMenu.y + 'px'}" @click.stop>
 <div class="user-menu-header">
-<div class="msg-avatar"><img v-if="userMenu.avatar" :src="userMenu.avatar"><span v-else>{{ userMenu.nickname?.charAt(0) }}</span></div>
+<div class="msg-avatar"><img v-if="userMenu.avatar" :src="userMenu.avatar"><span v-else>{{ userMenu.nickname ? userMenu.nickname.charAt(0) : '?' }}</span></div>
 <div>
 <div style="font-weight:500">{{ userMenu.nickname }}</div>
 <div class="item-info" :style="{color: userMenu.online ? 'var(--success)' : 'var(--muted)'}">{{ userMenu.online ? '在线' : '离线' }}</div>
@@ -575,13 +520,14 @@ textarea.input{resize:none;min-height:80px}
 <img :src="previewImageUrl">
 </div>
 
+</div>
+
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <script>
-const { createApp, ref, reactive, computed, onMounted, nextTick, watch } = Vue;
+const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
 
 createApp({
 setup() {
-// 基础状态
 const loggedIn = ref(false);
 const user = ref({});
 const token = ref('');
@@ -590,7 +536,6 @@ const isAdmin = ref(false);
 const userPerms = ref([]);
 const mainTab = ref('channels');
 
-// 频道
 const groups = ref([]);
 const currentGroup = ref(null);
 const channelInput = ref('');
@@ -598,28 +543,22 @@ const channelLoading = ref(false);
 const members = ref([]);
 const showMembers = ref(false);
 
-// 消息
 const messages = ref([]);
 const msgInput = ref('');
 const msgsBox = ref(null);
 const replyTo = ref(null);
 const forwardMsg = ref(null);
 const pinnedMessage = ref(null);
-const showSearch = ref(false);
-const searchQuery = ref('');
 
-// 私聊
 const dmTarget = ref(null);
 const dmMessages = ref([]);
 const dmInput = ref('');
 const dmMsgsBox = ref(null);
 
-// 好友
 const friends = ref([]);
 const friendRequests = ref([]);
 const friendRequestCount = ref(0);
 
-// 管理面板
 const showAdmin = ref(false);
 const adminTab = ref('users');
 const users = ref([]);
@@ -632,38 +571,33 @@ const newGroup = reactive({ name: '' });
 const createGroupLoading = ref(false);
 const newWord = reactive({ word: '', replacement: '***' });
 
-// 个人资料
 const showProfile = ref(false);
 const profileForm = reactive({ nickname: '', newPassword: '', confirmPassword: '' });
 const profileLoading = ref(false);
 const avatarInput = ref(null);
 
-// 权限
 const showPermModal = ref(false);
 const permTarget = ref(null);
 const permTargetPerms = ref([]);
 const allPermissions = ref([]);
 
-// 用户菜单
 const userMenu = reactive({ show: false, x: 0, y: 0, uid: '', userId: '', nickname: '', avatar: '', online: false });
 
-// 登录
 const loginForm = reactive({ uid: '', pwd: '' });
 const loginError = ref('');
 const loginLoading = ref(false);
 
-// 表情
 const showEmoji = ref(false);
 const emojis = ['😀','😂','🤣','😊','😍','🥰','😘','😜','🤔','😎','👍','👎','❤️','🔥','🎉','👏','🙏','💪','🤝','👋'];
 
+const previewImageUrl = ref(null);
+
 let ws = null;
 
-// 计算属性
 const canAccessAdmin = computed(() => isAdmin.value || userPerms.value.length > 0);
 const canManageUser = computed(() => hasPerm('user_ban') || hasPerm('user_mute') || isAdmin.value);
 const canPinMsg = computed(() => isAdmin.value || (currentGroup.value && currentGroup.value.ownerId === user.value.id));
 
-// 权限检查
 function hasPerm(name) {
   if (isAdmin.value) return true;
   return userPerms.value.includes(name);
@@ -673,7 +607,6 @@ function hasUserPerm(name) {
   return permTargetPerms.value.includes(name);
 }
 
-// API
 const API = location.origin;
 
 async function api(path, options = {}) {
@@ -696,7 +629,6 @@ async function api(path, options = {}) {
   }
 }
 
-// 登录
 async function doLogin() {
   if (!loginForm.uid || !loginForm.pwd) {
     loginError.value = '请输入UID和密码';
@@ -743,7 +675,6 @@ function doLogout() {
   if (ws) ws.close();
 }
 
-// 频道
 async function loadGroups() {
   const d = await api('/api/groups');
   if (d.success) groups.value = d.data;
@@ -789,13 +720,11 @@ async function loadMembers() {
   if (d.success) members.value = d.data;
 }
 
-// 消息
 async function loadMessages() {
   if (!currentGroup.value) return;
   const d = await api('/api/messages/group/' + currentGroup.value.id);
   if (d.success) {
     messages.value = d.data;
-    // 找置顶消息
     const pinned = messages.value.find(m => m.pinned);
     if (pinned) pinnedMessage.value = pinned;
     nextTick(scrollToBottom);
@@ -806,18 +735,15 @@ async function doSendMsg() {
   if (!msgInput.value.trim() || !currentGroup.value) return;
   const content = msgInput.value;
   msgInput.value = '';
-  
   const body = { content, groupId: currentGroup.value.id };
   if (replyTo.value) {
     body.reply_to = replyTo.value.id;
     replyTo.value = null;
   }
-  
   const d = await api('/api/messages', {
     method: 'POST',
     body: JSON.stringify(body)
   });
-  
   if (!d.success) {
     msgInput.value = content;
     alert(d.error || '发送失败');
@@ -827,10 +753,8 @@ async function doSendMsg() {
 async function uploadFile(e) {
   const file = e.target.files[0];
   if (!file || !currentGroup.value) return;
-  
   const formData = new FormData();
   formData.append('file', file);
-  
   try {
     const r = await fetch(API + '/api/messages/file/' + currentGroup.value.id, {
       method: 'POST',
@@ -879,21 +803,10 @@ async function doForward(targetGroupId) {
   forwardMsg.value = null;
 }
 
-async function searchMessages() {
-  if (!searchQuery.value.trim() || !currentGroup.value) return;
-  const d = await api('/api/messages/group/' + currentGroup.value.id + '/search?q=' + encodeURIComponent(searchQuery.value));
-  if (d.success && d.data.length > 0) {
-    messages.value = d.data;
-  } else {
-    alert('未找到匹配消息');
-  }
-}
-
 function renderMsg(m) {
   if (m.msgType === 'image') return '<img class="msg-img" src="' + m.content + '" onclick="window._previewImage(\'' + m.content + '\')">';
   if (m.msgType === 'file') return '<div class="msg-file"><span class="msg-file-icon">📄</span><div class="msg-file-info">' + (m.fileName || '文件') + '</div></div>';
-  // 处理@提及
-  let content = m.content;
+  let content = m.content || '';
   content = content.replace(/@([\u4e00-\u9fa5\w]+)/g, '<span class="msg-mention">@$1</span>');
   const el = document.createElement('div');
   el.textContent = content;
@@ -908,34 +821,20 @@ function scrollToBottom() {
   if (msgsBox.value) msgsBox.value.scrollTop = msgsBox.value.scrollHeight;
 }
 
-function onMsgScroll() {
-  // 可以实现加载更多历史消息
-}
-
 function insertEmoji(e) {
   msgInput.value += e;
   showEmoji.value = false;
 }
 
 function previewImage(url) {
-  window._previewImage(url);
+  previewImageUrl.value = url;
 }
 
-window._previewImage = (url) => {
-  const app = document.querySelector('#app').__vue_app__;
-  if (app) {
-    const root = app._instance.proxy;
-    root.previewImageUrl = url;
-  }
-};
+window._previewImage = (url) => { previewImageUrl.value = url; };
 
-const previewImageUrl = ref(null);
-
-// WebSocket
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(proto + '//' + location.host + '/ws?token=' + token.value);
-  
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.event === 'message' && m.data.groupId === currentGroup.value?.id) {
@@ -946,8 +845,6 @@ function connectWS() {
       if (dmTarget.value && (m.data.senderId === dmTarget.value.id || m.data.receiverId === dmTarget.value.id)) {
         dmMessages.value.push(m.data);
         nextTick(scrollToBottom);
-      } else if (m.data.senderId !== user.value.id) {
-        // 通知
       }
     }
     if (m.event === 'message_recall' && m.data.groupId === currentGroup.value?.id) {
@@ -961,18 +858,15 @@ function connectWS() {
       loadFriendRequests();
     }
   };
-  
   ws.onclose = () => setTimeout(connectWS, 3000);
 }
 
-// 主题
 function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', theme.value === 'light' ? 'light' : '');
   localStorage.setItem('theme', theme.value);
 }
 
-// 用户菜单
 function openUserMenu(e, userId, nickname) {
   e.stopPropagation();
   api('/api/users/' + userId).then(d => {
@@ -1014,7 +908,6 @@ async function sendDM() {
   }
 }
 
-// 好友
 async function loadFriends() {
   const d = await api('/api/friends');
   if (d.success) friends.value = d.data;
@@ -1050,18 +943,15 @@ function startDM(friend) {
   dmMessages.value = [];
 }
 
-// 个人资料
 function uploadAvatar() {
-  avatarInput.value?.click();
+  avatarInput.value && avatarInput.value.click();
 }
 
 async function doUploadAvatar(e) {
   const file = e.target.files[0];
   if (!file) return;
-  
   const formData = new FormData();
   formData.append('avatar', file);
-  
   try {
     const r = await fetch(API + '/api/users/avatar', {
       method: 'POST',
@@ -1087,8 +977,6 @@ async function saveProfile() {
     return;
   }
   profileLoading.value = true;
-  
-  // 更新昵称
   if (profileForm.nickname !== user.value.nickname) {
     await api('/api/users/profile', {
       method: 'PUT',
@@ -1096,8 +984,6 @@ async function saveProfile() {
     });
     user.value.nickname = profileForm.nickname;
   }
-  
-  // 更新密码
   if (profileForm.newPassword) {
     const d = await api('/api/users/password', {
       method: 'PUT',
@@ -1109,14 +995,12 @@ async function saveProfile() {
       return;
     }
   }
-  
   localStorage.setItem('u', JSON.stringify(user.value));
   profileLoading.value = false;
   showProfile.value = false;
   alert('保存成功');
 }
 
-// 管理面板
 function openAdmin() {
   showAdmin.value = true;
   loadAllPermissions();
@@ -1246,7 +1130,6 @@ async function loadStats() {
   if (d.success) stats.value = d.data;
 }
 
-// 权限管理
 function openPermModal(u) {
   permTarget.value = u;
   permTargetPerms.value = [...(u.permissions || [])];
@@ -1264,7 +1147,6 @@ async function savePerms() {
   const currentPerms = permTarget.value.permissions || [];
   const toGrant = permTargetPerms.value.filter(p => !currentPerms.includes(p));
   const toRevoke = currentPerms.filter(p => !permTargetPerms.value.includes(p));
-  
   for (const p of toGrant) {
     await api('/api/admin/users/' + permTarget.value.uid + '/permissions', {
       method: 'POST',
@@ -1277,22 +1159,18 @@ async function savePerms() {
       body: JSON.stringify({ permission_name: p })
     });
   }
-  
   showPermModal.value = false;
   loadUsers();
   alert('权限已更新');
 }
 
-// 初始化
 onMounted(() => {
   document.addEventListener('click', () => userMenu.show = false);
-  
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme === 'light') {
     theme.value = 'light';
     document.documentElement.setAttribute('data-theme', 'light');
   }
-  
   const t = localStorage.getItem('t');
   const u = localStorage.getItem('u');
   if (t && u) {
@@ -1320,7 +1198,6 @@ onMounted(() => {
       localStorage.clear();
     }
   }
-  
   setTimeout(() => {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').classList.add('loaded');
@@ -1330,7 +1207,7 @@ onMounted(() => {
 return {
   loggedIn, user, token, theme, isAdmin, userPerms, mainTab,
   groups, currentGroup, channelInput, channelLoading, members, showMembers,
-  messages, msgInput, msgsBox, replyTo, forwardMsg, pinnedMessage, showSearch, searchQuery,
+  messages, msgInput, msgsBox, replyTo, forwardMsg, pinnedMessage,
   dmTarget, dmMessages, dmInput, dmMsgsBox,
   friends, friendRequests, friendRequestCount,
   showAdmin, adminTab, users, allGroups, words, stats,
@@ -1340,15 +1217,14 @@ return {
   userMenu, showEmoji, emojis, previewImageUrl,
   canAccessAdmin, canManageUser, canPinMsg, hasPerm, hasUserPerm,
   doLogin, doLogout, loadGroups, doEnterChannel, doJoinGroup, doLeaveGroup, loadMembers,
-  loadMessages, doSendMsg, uploadFile, recallMessage, togglePin, doForward, searchMessages, renderMsg, formatTime, insertEmoji, previewImage,
+  loadMessages, doSendMsg, uploadFile, recallMessage, togglePin, doForward, renderMsg, formatTime, insertEmoji, previewImage,
   openUserMenu, startDMFromMenu, closeDM, sendDM,
   loadFriends, loadFriendRequests, acceptFriend, doAddFriend, startDM,
   uploadAvatar, doUploadAvatar, saveProfile,
   toggleTheme, openAdmin,
   loadUsers, doCreateUser, doBanUser, doUnbanUser, doMuteUser, doKickUser,
   loadAllGroups, doCreateGroup, doDeleteGroup, doClearGroupMessages, loadWords, doAddWord, doDeleteWord, loadStats,
-  openPermModal, togglePerm, savePerms,
-  onMsgScroll
+  openPermModal, togglePerm, savePerms
 };
 }
 }).mount('#app');
