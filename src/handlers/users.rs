@@ -117,8 +117,21 @@ pub async fn ban_user(
         return Err(crate::error::AppError::BadRequest("不能封禁自己".to_string())); 
     }
     
-    sqlx::query("UPDATE users SET account_status = 'banned', token_version = token_version + 1, online = 0 WHERE uid = ? AND role != 'admin'")
+    // 检查目标用户是否是管理员
+    let target_role: Option<String> = sqlx::query_scalar("SELECT role FROM users WHERE uid = ?")
+        .bind(&uid).fetch_optional(&state.db).await?
+        .flatten();
+    
+    if target_role.as_deref() == Some("admin") {
+        return Err(crate::error::AppError::BadRequest("不能封禁管理员".to_string()));
+    }
+    
+    let result = sqlx::query("UPDATE users SET account_status = 'banned', token_version = token_version + 1, online = 0 WHERE uid = ?")
         .bind(&uid).execute(&state.db).await?;
+    
+    if result.rows_affected() == 0 {
+        return Err(crate::error::AppError::NotFound);
+    }
     
     Ok(Json(json!({"success": true})))
 }
@@ -149,8 +162,21 @@ pub async fn kick_user(
         return Err(crate::error::AppError::BadRequest("不能踢出自己".to_string())); 
     }
     
-    sqlx::query("UPDATE users SET token_version = token_version + 1, online = 0 WHERE uid = ?")
+    // 检查目标用户是否是管理员
+    let target_role: Option<String> = sqlx::query_scalar("SELECT role FROM users WHERE uid = ?")
+        .bind(&uid).fetch_optional(&state.db).await?
+        .flatten();
+    
+    if target_role.as_deref() == Some("admin") {
+        return Err(crate::error::AppError::BadRequest("不能踢出管理员".to_string()));
+    }
+    
+    let result = sqlx::query("UPDATE users SET token_version = token_version + 1, online = 0 WHERE uid = ?")
         .bind(&uid).execute(&state.db).await?;
+    
+    if result.rows_affected() == 0 {
+        return Err(crate::error::AppError::NotFound);
+    }
     
     Ok(Json(json!({"success": true})))
 }
@@ -168,11 +194,24 @@ pub async fn mute_user(
         return Err(crate::error::AppError::BadRequest("不能禁言自己".to_string())); 
     }
     
+    // 检查目标用户是否是管理员
+    let target_role: Option<String> = sqlx::query_scalar("SELECT role FROM users WHERE uid = ?")
+        .bind(&uid).fetch_optional(&state.db).await?
+        .flatten();
+    
+    if target_role.as_deref() == Some("admin") {
+        return Err(crate::error::AppError::BadRequest("不能禁言管理员".to_string()));
+    }
+    
     let muted_until = chrono::Utc::now() + chrono::Duration::minutes(req.duration_minutes);
-    sqlx::query("UPDATE users SET muted_until = ? WHERE uid = ? AND role != 'admin'")
+    let result = sqlx::query("UPDATE users SET muted_until = ? WHERE uid = ?")
         .bind(muted_until.to_rfc3339())
         .bind(&uid)
         .execute(&state.db).await?;
+    
+    if result.rows_affected() == 0 {
+        return Err(crate::error::AppError::NotFound);
+    }
     
     Ok(Json(json!({"success": true, "data": {"mutedUntil": muted_until.to_rfc3339()}})))
 }

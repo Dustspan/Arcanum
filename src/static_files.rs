@@ -67,7 +67,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .chat-tools{display:flex;gap:6px}
 .tool-btn{width:36px;height:36px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:16px;transition:all .2s}
 .tool-btn:hover{border-color:var(--accent);color:var(--accent);transform:scale(1.1)}
-.tool-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
 .admin-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
 .admin-tab{flex:1;min-width:60px;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:12px;cursor:pointer;transition:all .2s}
 .admin-tab.active{border-color:var(--accent);color:var(--accent);background:rgba(0,240,255,.1)}
@@ -117,8 +116,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
 .stat-value{font-size:24px;font-weight:700;color:var(--accent)}
 .stat-label{font-size:11px;color:var(--muted);margin-top:4px}
-
-/* 滚动条美化 */
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -195,12 +192,10 @@ Vue.createApp({
       try {
         const r = await fetch(location.origin + path, { ...options, headers });
         const text = await r.text();
-        // 尝试解析JSON
         try {
           const data = JSON.parse(text);
           return data;
         } catch (e) {
-          // 如果不是JSON，返回错误
           console.error('API返回非JSON:', text.substring(0, 200));
           return { success: false, error: '服务器返回格式错误: ' + text.substring(0, 50) };
         }
@@ -300,16 +295,19 @@ Vue.createApp({
       if (!this.msgInput.trim() || !this.currentGroup) return;
       const content = this.msgInput;
       this.msgInput = '';
+      // 使用snake_case字段名
       const d = await this.api('/api/messages', {
         method: 'POST',
-        body: JSON.stringify({ content, groupId: this.currentGroup.id })
+        body: JSON.stringify({ 
+          group_id: this.currentGroup.id, 
+          content: content 
+        })
       });
       if (!d.success) {
         this.msgInput = content;
         alert('发送失败: ' + (d.error || '未知错误'));
       }
     },
-    // 图片压缩
     compressImage(file, maxWidth = 800, quality = 0.8) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -339,16 +337,14 @@ Vue.createApp({
       if (!file || !this.currentGroup) return;
       
       const isImage = file.type.startsWith('image/');
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 5 * 1024 * 1024;
       
-      // 显示上传进度
       this.showUploadProgress = true;
       this.uploadProgress = 0;
       
       try {
         let uploadFile = file;
         
-        // 图片压缩
         if (isImage) {
           if (file.size > maxSize) {
             this.uploadProgress = 30;
@@ -359,7 +355,6 @@ Vue.createApp({
           }
         }
         
-        // 检查大小
         if (uploadFile.size > maxSize) {
           alert('文件太大，请选择小于5MB的文件');
           this.showUploadProgress = false;
@@ -414,17 +409,11 @@ Vue.createApp({
     },
     renderMsg(m) {
       if (m.msgType === 'image') {
-        return `<img class="msg-img" src="${m.content}" @click="previewImage('${m.content}')">`;
+        return '<img class="msg-img" src="' + m.content + '" onclick="window._previewImage(\'' + m.content + '\')">';
       }
       if (m.msgType === 'file') {
         const size = this.formatFileSize(m.fileSize);
-        return `<div class="msg-file" onclick="window.open('${m.content}')">
-          <span class="msg-file-icon">📄</span>
-          <div class="msg-file-info">
-            <div class="msg-file-name">${m.fileName || '文件'}</div>
-            <div class="msg-file-size">${size}</div>
-          </div>
-        </div>`;
+        return '<div class="msg-file" onclick="window.open(\'' + m.content + '\')"><span class="msg-file-icon">📄</span><div class="msg-file-info"><div class="msg-file-name">' + (m.fileName || '文件') + '</div><div class="msg-file-size">' + size + '</div></div></div>';
       }
       return m.content || '';
     },
@@ -679,6 +668,7 @@ Vue.createApp({
   },
   mounted() {
     document.addEventListener('click', () => this.closeUserMenu());
+    window._previewImage = (url) => { this.previewImageUrl = url; };
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
       this.theme = 'light';
@@ -866,12 +856,12 @@ Vue.createApp({
             <button class="btn full" @click="doCreateUser" :disabled="createUserLoading">{{createUserLoading ? '创建中...' : '创建用户'}}</button>
           </div>
           <div class="item-card" v-for="u in users" :key="u.id">
-            <div class="item-header"><span class="item-title">{{u.nickname}} <span class="badge" :class="u.status === 'banned' ? 'error' : (u.online ? 'success' : '')">{{u.status === 'banned' ? '已封禁' : (u.online ? '在线' : '离线')}}</span></span></div>
+            <div class="item-header"><span class="item-title">{{u.nickname}} <span class="badge" :class="u.status === 'banned' ? 'error' : (u.online ? 'success' : '')">{{u.status === 'banned' ? '已封禁' : (u.online ? '在线' : '离线')}}</span><span v-if="u.role === 'admin'" class="badge warn">管理员</span></span></div>
             <div class="item-info">{{u.uid}}</div>
             <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
               <button class="btn sm" v-if="hasPerm('user_ban') && u.status !== 'banned' && u.role !== 'admin'" @click="doBanUser(u.uid)">封禁</button>
               <button class="btn sm" v-if="hasPerm('user_ban') && u.status === 'banned'" @click="doUnbanUser(u.uid)">解封</button>
-              <button class="btn sm" v-if="hasPerm('user_mute')" @click="doMuteUser(u.uid)">禁言</button>
+              <button class="btn sm" v-if="hasPerm('user_mute') && u.role !== 'admin'" @click="doMuteUser(u.uid)">禁言</button>
               <button class="btn sm" v-if="hasPerm('permission_grant') && u.role !== 'admin'" @click="openPermModal(u)">权限</button>
             </div>
           </div>
