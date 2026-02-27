@@ -32,6 +32,10 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
     // 频道表
     query("CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, cipher_hash TEXT NOT NULL, owner_id TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)").execute(pool).await?;
     
+    // 添加频道描述和公告列
+    query("ALTER TABLE groups ADD COLUMN description TEXT").execute(pool).await.ok();
+    query("ALTER TABLE groups ADD COLUMN announcement TEXT").execute(pool).await.ok();
+    
     // 频道成员表
     query("CREATE TABLE IF NOT EXISTS group_members (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, user_id TEXT NOT NULL, joined_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(group_id, user_id))").execute(pool).await?;
     

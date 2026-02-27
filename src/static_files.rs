@@ -58,6 +58,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .msg-bubble.out .msg-time{color:rgba(0,0,0,.4)}
 .msg-read{margin-left:8px;color:var(--accent)}
 .typing-indicator{padding:4px 12px;font-size:11px;color:var(--muted);font-style:italic}
+.group-announcement{padding:8px 12px;background:rgba(0,255,255,.1);border-bottom:1px solid var(--border);font-size:12px;color:var(--accent);cursor:pointer}
+.group-announcement:hover{background:rgba(0,255,255,.15)}
 .msg-image{max-width:100%;max-height:300px;border-radius:8px;cursor:pointer;display:block}
 .msg-file{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;margin-top:4px}
 .msg-file-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center}
@@ -158,8 +160,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div class="chat-header">
 <button class="chat-back" id="leaveChatBtn">←</button>
 <h2 id="chatTitle">聊天</h2>
-<div style="width:30px"></div>
+<button class="chat-action-btn" id="groupInfoBtn" title="频道信息">ℹ</button>
 </div>
+<div class="group-announcement hidden" id="groupAnnouncement"></div>
 <div class="chat-msgs" id="msgs"></div>
 <div class="typing-indicator hidden" id="typingIndicator"></div>
 <div class="chat-input">
@@ -261,6 +264,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 </div>
 
+<div class="modal-overlay hidden" id="groupInfoModal">
+<div class="modal">
+<div class="modal-header">
+<h3>频道信息</h3>
+<button class="modal-close" id="closeGroupInfoModalBtn">×</button>
+</div>
+<div id="groupInfoContent"></div>
+</div>
+</div>
+
 <div class="upload-progress hidden" id="uploadProgress"><span class="loading-spinner"></span>上传中...</div>
 
 <script>
@@ -333,7 +346,20 @@ const name=$("cipherInput").value.trim();
 if(!name){$("cipherErr").textContent="请输入频道名";return}
 try{
 const d=await api("/api/groups/enter",{method:"POST",body:JSON.stringify({name})});
-if(d.success){groupId=d.data.id;$("cipherErr").textContent="";$("cipherInput").value="";showChat()}
+if(d.success){
+groupId=d.data.id;
+$("cipherErr").textContent="";
+$("cipherInput").value="";
+$("chatTitle").textContent=name;
+// 显示公告
+if(d.data.announcement){
+$("groupAnnouncement").textContent="📢 "+d.data.announcement;
+$("groupAnnouncement").classList.remove("hidden");
+}else{
+$("groupAnnouncement").classList.add("hidden");
+}
+showChat();
+}
 else $("cipherErr").textContent=d.error||"频道不存在";
 }catch(e){$("cipherErr").textContent="网络错误"}
 }
@@ -687,6 +713,57 @@ if(d.success)allPermissions=d.data;
 }catch(e){}
 }
 
+async function showGroupInfo(){
+if(!groupId)return;
+try{
+const d=await api("/api/groups/"+groupId);
+if(d.success){
+const info=d.data;
+const isOwner=info.ownerId===user.id;
+const isAdmin=user.role==="admin";
+let html='<div style="padding:8px">';
+html+='<p style="font-size:14px;font-weight:500;margin-bottom:8px">'+esc(info.name)+'</p>';
+html+='<p style="font-size:12px;color:var(--muted);margin-bottom:8px">成员: '+info.memberCount+'人</p>';
+if(info.description){
+html+='<p style="font-size:12px;margin-bottom:8px"><strong>描述:</strong> '+esc(info.description)+'</p>';
+}
+if(info.announcement){
+html+='<p style="font-size:12px;margin-bottom:8px;color:var(--accent)"><strong>公告:</strong> '+esc(info.announcement)+'</p>';
+}
+if(isOwner||isAdmin){
+html+='<hr style="border-color:var(--border);margin:12px 0">';
+html+='<input class="input" id="groupDescInput" placeholder="频道描述（最多200字）" value="'+esc(info.description||"")+'">';
+html+='<textarea class="input" id="groupAnnInput" placeholder="频道公告（最多500字）" style="margin-top:8px;height:60px">'+esc(info.announcement||"")+'</textarea>';
+html+='<button class="btn full" style="margin-top:8px" id="saveGroupInfoBtn">保存</button>';
+}
+html+='</div>';
+$("groupInfoContent").innerHTML=html;
+$("groupInfoModal").classList.remove("hidden");
+if(isOwner||isAdmin){
+$("saveGroupInfoBtn").onclick=saveGroupInfo;
+}
+}
+}catch(e){}
+}
+
+async function saveGroupInfo(){
+const desc=$("groupDescInput").value.trim();
+const ann=$("groupAnnInput").value.trim();
+try{
+const d=await api("/api/groups/"+groupId,{method:"PUT",body:JSON.stringify({description:desc,announcement:ann})});
+if(d.success){
+$("groupInfoModal").classList.add("hidden");
+// 更新公告显示
+if(ann){
+$("groupAnnouncement").textContent="📢 "+ann;
+$("groupAnnouncement").classList.remove("hidden");
+}else{
+$("groupAnnouncement").classList.add("hidden");
+}
+}else{alert(d.error||"保存失败")}
+}catch(e){alert("保存失败")}
+}
+
 async function showUserMenu(e,sid,nick){
 e.stopPropagation();
 const menu=$("userMenu");
@@ -811,6 +888,9 @@ $("savePermsBtn").onclick=savePermissions;
 $("confirmMuteBtn").onclick=async function(){if(!menuTargetUser)return;await api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})});$("muteModal").classList.add("hidden");loadUsers()};
 $("permModal").onclick=function(e){if(e.target===this)$("permModal").classList.add("hidden")};
 $("muteModal").onclick=function(e){if(e.target===this)$("muteModal").classList.add("hidden")};
+$("closeGroupInfoModalBtn").onclick=function(){$("groupInfoModal").classList.add("hidden")};
+$("groupInfoModal").onclick=function(e){if(e.target===this)$("groupInfoModal").classList.add("hidden")};
+$("groupInfoBtn").onclick=showGroupInfo;
 // 滚动加载更多消息
 $("msgs").addEventListener("scroll",function(){
 if(this.scrollTop<50&&!isLoadingMore){

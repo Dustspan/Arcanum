@@ -74,6 +74,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/groups/enter", post(handlers::groups::enter_by_name))
         .route("/api/groups", post(handlers::groups::create_group))
         .route("/api/groups", get(handlers::groups::list_my_groups))
+        .route("/api/groups/:id", get(handlers::groups::get_group_info))
+        .route("/api/groups/:id", put(handlers::groups::update_group))
         .route("/api/admin/groups", get(handlers::groups::list_all_groups))
         .route("/api/admin/groups/:id", delete(handlers::groups::delete_group))
         // 消息路由
