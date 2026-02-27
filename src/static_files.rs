@@ -7,7 +7,7 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
 <title>ARCANUM</title>
 <link rel="manifest" href="/manifest.json">
 <style>
-/* 防止模板闪烁 - 必须最先加载 */
+/* 防止模板闪烁 */
 [v-cloak]{display:none!important}
 #app{display:none}
 #app.loaded{display:block}
@@ -32,7 +32,6 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
 .err{color:var(--error);font-size:13px;padding:8px;background:rgba(255,51,102,.1);border-radius:4px;margin-top:8px}
-.success-msg{color:var(--success);font-size:13px;padding:8px;background:rgba(0,255,136,.1);border-radius:4px;margin-top:8px}
 
 .login-logo{font-size:28px;font-weight:700;text-align:center;margin:60px 0 30px;color:var(--accent)}
 .login-form{display:flex;flex-direction:column;gap:12px}
@@ -62,8 +61,14 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 .msg-bubble.out{background:var(--accent);color:#000}
 .msg-nick{font-size:10px;color:var(--accent);margin-bottom:2px}
 .msg-time{font-size:9px;color:var(--muted);margin-top:4px;text-align:right}
+.msg-img{max-width:180px;border-radius:6px;cursor:pointer}
+.msg-file{display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:6px}
+.msg-file-icon{font-size:20px}
+.msg-file-info{font-size:12px}
 .chat-input{display:flex;gap:8px;padding:12px;background:var(--bg);border-top:1px solid var(--border)}
 .chat-input textarea{flex:1;padding:8px 12px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:16px;font-size:13px;outline:none;resize:none;max-height:60px}
+.chat-input input[type="file"]{display:none}
+.chat-tools{display:flex;gap:4px}
 
 .admin-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
 .admin-tab{flex:1;min-width:50px;padding:8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;font-size:11px;cursor:pointer}
@@ -92,6 +97,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 .user-menu-header{padding:6px;border-bottom:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:8px}
 .user-menu-item{display:block;width:100%;padding:6px 10px;background:none;border:none;color:var(--text);text-align:left;cursor:pointer;border-radius:4px;font-size:12px}
 .user-menu-item:hover{background:var(--bg2)}
+.user-menu-item.danger{color:var(--error)}
 
 .badge{display:inline-block;padding:2px 6px;border-radius:8px;font-size:9px;margin-left:4px}
 .badge.success{background:rgba(0,255,136,.2);color:var(--success)}
@@ -100,6 +106,22 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 
 .perm-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .perm-tag{font-size:10px;padding:2px 6px;background:var(--bg);border:1px solid var(--border);border-radius:4px}
+
+/* 私聊界面 */
+.dm-header{display:flex;align-items:center;gap:8px;padding:12px;background:var(--card);border-bottom:1px solid var(--border)}
+.dm-back{background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer}
+.dm-title{font-size:14px}
+.dm-status{font-size:10px;color:var(--success)}
+.dm-status.offline{color:var(--muted)}
+
+/* 文件上传按钮 */
+.upload-btn{background:var(--bg2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:16px}
+.upload-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* 回复引用 */
+.reply-preview{background:var(--bg);padding:6px 10px;border-radius:4px;margin-bottom:4px;font-size:11px;border-left:2px solid var(--accent)}
+.reply-preview .reply-nick{color:var(--accent)}
+.reply-preview .reply-content{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -139,8 +161,41 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 </div>
 </div>
 
+<!-- 私聊界面 -->
+<div v-if="dmTarget" class="card chat-wrap">
+<div class="dm-header">
+<button class="dm-back" @click="closeDM">←</button>
+<div class="msg-avatar">{{ dmTarget.nickname?.charAt(0) }}</div>
+<div>
+<div class="dm-title">{{ dmTarget.nickname }}</div>
+<div class="dm-status" :class="{offline: !dmTarget.online}">{{ dmTarget.online ? '在线' : '离线' }}</div>
+</div>
+</div>
+<div class="chat-msgs" ref="dmMsgsBox">
+<div class="msg-row" v-for="m in dmMessages" :key="m.id" :class="{me: m.senderId === user.id}">
+<div class="msg-avatar">{{ m.senderNickname?.charAt(0) }}</div>
+<div class="msg-bubble" :class="m.senderId === user.id ? 'out' : 'in'">
+<div class="msg-nick">{{ m.senderNickname }}</div>
+<div v-if="m.msgType === 'image'">
+<img class="msg-img" :src="m.content" @click="previewImage(m.content)">
+</div>
+<div v-else>{{ m.content }}</div>
+<div class="msg-time">{{ formatTime(m.createdAt) }}</div>
+</div>
+</div>
+</div>
+<div class="chat-input">
+<textarea v-model="dmInput" placeholder="私聊消息..." @keyup.enter="sendDM" rows="1"></textarea>
+<button class="btn" @click="sendDM">→</button>
+</div>
+</div>
+
 <!-- 频道列表 -->
-<div v-if="!currentGroup">
+<div v-else-if="!currentGroup">
+<div class="channel-input">
+<input class="input" v-model="channelInput" placeholder="输入频道名进入" @keyup.enter="doEnterChannel">
+<button class="btn" @click="doEnterChannel" :disabled="channelLoading">{{ channelLoading ? '...' : '进入' }}</button>
+</div>
 <div class="channel-list">
 <div class="channel-card" v-for="g in groups" :key="g.id" @click="doJoinGroup(g.id)">
 <h3>{{ g.name }}</h3>
@@ -172,12 +227,21 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 </div>
 <div class="msg-bubble" :class="m.senderId === user.id ? 'out' : 'in'">
 <div class="msg-nick">{{ m.senderNickname }}</div>
+<div v-if="m.replyInfo" class="reply-preview">
+<span class="reply-nick">{{ m.replyInfo.senderNickname }}</span>: <span class="reply-content">{{ m.replyInfo.content }}</span>
+</div>
 <div v-html="renderMsg(m)"></div>
 <div class="msg-time">{{ formatTime(m.createdAt) }}</div>
 </div>
 </div>
 </div>
 <div class="chat-input">
+<div class="chat-tools">
+<label class="upload-btn" v-if="hasPerm('file_upload')">
+📷
+<input type="file" accept="image/*,.txt" @change="uploadFile">
+</label>
+</div>
 <textarea v-model="msgInput" placeholder="消息..." @keyup.enter="doSendMsg" rows="1"></textarea>
 <button class="btn" @click="doSendMsg">→</button>
 </div>
@@ -216,7 +280,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 <span class="perm-tag" v-for="p in (u.permissions || []).slice(0,5)" :key="p">{{ p }}</span>
 </div>
 <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-<button class="btn sm" v-if="hasPerm('user_ban') && u.status !== 'banned'" @click="doBanUser(u.uid)">封禁</button>
+<button class="btn sm" v-if="hasPerm('user_ban') && u.status !== 'banned' && u.role !== 'admin'" @click="doBanUser(u.uid)">封禁</button>
 <button class="btn sm" v-if="hasPerm('user_ban') && u.status === 'banned'" @click="doUnbanUser(u.uid)">解封</button>
 <button class="btn sm" v-if="hasPerm('user_mute')" @click="doMuteUser(u.uid)">禁言</button>
 <button class="btn sm" v-if="hasPerm('permission_grant')" @click="openPermModal(u)">权限</button>
@@ -238,8 +302,9 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 <span class="badge success">{{ g.memberCount }}人</span>
 </div>
 <div class="item-info">{{ g.id }}</div>
-<div style="margin-top:6px" v-if="hasPerm('group_delete')">
-<button class="btn sm danger" @click="doDeleteGroup(g.id)">删除</button>
+<div style="margin-top:6px;display:flex;gap:4px">
+<button class="btn sm danger" v-if="hasPerm('group_delete')" @click="doDeleteGroup(g.id)">删除</button>
+<button class="btn sm" v-if="hasPerm('message_delete')" @click="doClearGroupMessages(g.id)">清空消息</button>
 </div>
 </div>
 <div class="card" v-if="allGroups.length === 0" style="text-align:center;color:var(--muted);font-size:13px">
@@ -299,19 +364,20 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 </div>
 
 <!-- 用户菜单 -->
-<div class="user-menu" v-if="userMenu.show" :style="{left: userMenu.x + 'px', top: userMenu.y + 'px'}" @click.away="userMenu.show = false">
+<div class="user-menu" v-if="userMenu.show" :style="{left: userMenu.x + 'px', top: userMenu.y + 'px'}" @click.stop>
 <div class="user-menu-header">
 <div class="msg-avatar">{{ userMenu.nickname?.charAt(0) }}</div>
 <div>
 <div style="font-weight:500">{{ userMenu.nickname }}</div>
-<div class="item-info">{{ userMenu.uid }}</div>
+<div class="item-info" :class="userMenu.online ? 'badge success' : ''">{{ userMenu.online ? '在线' : '离线' }}</div>
 </div>
 </div>
-<button class="user-menu-item" @click="doAddFriend">添加好友</button>
 <button class="user-menu-item" @click="doDirectChat">私聊</button>
-<template v-if="canManageUser">
+<button class="user-menu-item" @click="doAddFriend">添加好友</button>
+<template v-if="canManageUser && userMenu.userId !== user.id">
 <button class="user-menu-item" @click="doMuteUser(userMenu.uid)">禁言</button>
-<button class="user-menu-item" style="color:var(--error)" @click="doBanUser(userMenu.uid)">封禁</button>
+<button class="user-menu-item danger" @click="doBanUser(userMenu.uid)">封禁</button>
+<button class="user-menu-item danger" @click="doKickUser(userMenu.uid)">踢出</button>
 </template>
 </div>
 
@@ -352,12 +418,17 @@ const createUserLoading = ref(false);
 const newGroup = reactive({ name: '' });
 const createGroupLoading = ref(false);
 const newWord = reactive({ word: '', replacement: '***' });
-const userMenu = reactive({ show: false, x: 0, y: 0, uid: '', userId: '', nickname: '' });
+const userMenu = reactive({ show: false, x: 0, y: 0, uid: '', userId: '', nickname: '', online: false });
 const msgsBox = ref(null);
 const showPermModal = ref(false);
 const permTarget = ref(null);
 const permTargetPerms = ref([]);
 const allPermissions = ref([]);
+// 私聊
+const dmTarget = ref(null);
+const dmMessages = ref([]);
+const dmInput = ref('');
+const dmMsgsBox = ref(null);
 let ws = null;
 
 // === 计算属性 ===
@@ -390,19 +461,14 @@ async function api(path, options = {}) {
     const text = await r.text();
     try {
       const data = JSON.parse(text);
-      if (!data.success && data.error) {
-        // 只对管理API显示错误
-        if (path.startsWith('/api/admin')) {
-          alert('API错误 [' + r.status + ']: ' + data.error);
-        }
+      if (!data.success && data.error && path.startsWith('/api/admin')) {
+        alert('错误: ' + data.error);
       }
       return data;
     } catch (e) {
-      alert('JSON解析失败: ' + text.substring(0, 100));
       return { success: false, error: 'Invalid JSON' };
     }
   } catch (e) {
-    alert('网络错误: ' + e.message);
     return { success: false, error: e.message };
   }
 }
@@ -481,6 +547,8 @@ async function doJoinGroup(id) {
   if (d.success) {
     currentGroup.value = d.data;
     loadMessages();
+  } else {
+    alert(d.error || '加入失败');
   }
 }
 
@@ -501,15 +569,44 @@ async function loadMessages() {
 
 async function doSendMsg() {
   if (!msgInput.value.trim() || !currentGroup.value) return;
+  const content = msgInput.value;
+  msgInput.value = '';
   const d = await api('/api/messages', {
     method: 'POST',
-    body: JSON.stringify({ content: msgInput.value, groupId: currentGroup.value.id })
+    body: JSON.stringify({ content, groupId: currentGroup.value.id })
   });
-  if (d.success) msgInput.value = '';
+  if (!d.success) {
+    msgInput.value = content;
+    alert(d.error || '发送失败');
+  }
+}
+
+async function uploadFile(e) {
+  const file = e.target.files[0];
+  if (!file || !currentGroup.value) return;
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    const r = await fetch(API + '/api/messages/file/' + currentGroup.value.id, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token.value },
+      body: formData
+    });
+    const d = await r.json();
+    if (!d.success) {
+      alert(d.error || '上传失败');
+    }
+  } catch (e) {
+    alert('上传失败: ' + e.message);
+  }
+  e.target.value = '';
 }
 
 function renderMsg(m) {
-  if (m.msgType === 'image') return '<img src="' + m.content + '" style="max-width:180px;border-radius:6px">';
+  if (m.msgType === 'image') return '<img class="msg-img" src="' + m.content + '" onclick="previewImage(\'' + m.content + '\')">';
+  if (m.msgType === 'file') return '<div class="msg-file"><span class="msg-file-icon">📄</span><div class="msg-file-info">' + (m.fileName || '文件') + '</div></div>';
   const el = document.createElement('div');
   el.textContent = m.content;
   return el.innerHTML;
@@ -521,6 +618,11 @@ function formatTime(t) {
 
 function scrollToBottom() {
   if (msgsBox.value) msgsBox.value.scrollTop = msgsBox.value.scrollHeight;
+  if (dmMsgsBox.value) dmMsgsBox.value.scrollTop = dmMsgsBox.value.scrollHeight;
+}
+
+function previewImage(url) {
+  window.open(url, '_blank');
 }
 
 // === WebSocket ===
@@ -533,6 +635,23 @@ function connectWS() {
     if (m.event === 'message' && m.data.groupId === currentGroup.value?.id) {
       messages.value.push(m.data);
       nextTick(scrollToBottom);
+    }
+    if (m.event === 'direct_message') {
+      // 如果正在与该用户私聊，添加消息
+      if (dmTarget.value && (m.data.senderId === dmTarget.value.id || m.data.receiverId === dmTarget.value.id)) {
+        dmMessages.value.push(m.data);
+        nextTick(scrollToBottom);
+      } else if (m.data.senderId !== user.value.id) {
+        // 否则提示
+        alert('收到 ' + m.data.senderNickname + ' 的私聊消息');
+      }
+    }
+    if (m.event === 'message_recall' && m.data.groupId === currentGroup.value?.id) {
+      const idx = messages.value.findIndex(msg => msg.id === m.data.id);
+      if (idx >= 0) messages.value.splice(idx, 1);
+    }
+    if (m.event === 'friend_request') {
+      alert(m.data.from + ' 请求添加你为好友');
     }
   };
   
@@ -553,6 +672,12 @@ function toggleTheme() {
 // === 用户菜单 ===
 function openUserMenu(e, userId, nickname) {
   e.stopPropagation();
+  // 获取用户在线状态
+  api('/api/users/' + userId).then(d => {
+    if (d.success) {
+      userMenu.online = d.data.online;
+    }
+  });
   userMenu.show = true;
   userMenu.x = Math.min(e.clientX, window.innerWidth - 160);
   userMenu.y = Math.min(e.clientY, window.innerHeight - 150);
@@ -569,15 +694,36 @@ function doAddFriend() {
 }
 
 function doDirectChat() {
-  alert('私聊: ' + userMenu.nickname);
+  dmTarget.value = { id: userMenu.userId, nickname: userMenu.nickname, online: userMenu.online };
+  dmMessages.value = [];
   userMenu.show = false;
+}
+
+function closeDM() {
+  dmTarget.value = null;
+  dmMessages.value = [];
+}
+
+async function sendDM() {
+  if (!dmInput.value.trim() || !dmTarget.value) return;
+  const content = dmInput.value;
+  dmInput.value = '';
+  
+  const d = await api('/api/direct/' + dmTarget.value.id, {
+    method: 'POST',
+    body: JSON.stringify({ content })
+  });
+  
+  if (!d.success) {
+    dmInput.value = content;
+    alert(d.error || '发送失败');
+  }
 }
 
 // === 管理面板 ===
 function openAdmin() {
   showAdmin.value = true;
   loadAllPermissions();
-  // 自动加载默认标签页数据
   if (adminTab.value === 'users') loadUsers();
 }
 
@@ -589,12 +735,8 @@ async function loadAllPermissions() {
 async function loadUsers() {
   try {
     const d = await api('/api/admin/users');
-    if (d.success) {
-      users.value = d.data;
-    }
-  } catch (e) {
-    // 错误已在api函数中处理
-  }
+    if (d.success) users.value = d.data;
+  } catch (e) {}
 }
 
 async function doCreateUser() {
@@ -640,20 +782,19 @@ async function doMuteUser(uid) {
   userMenu.show = false;
 }
 
+async function doKickUser(uid) {
+  if (!confirm('确定踢出该用户?')) return;
+  const d = await api('/api/admin/users/' + uid + '/kick', { method: 'PUT' });
+  alert(d.success ? '已踢出' : (d.error || '失败'));
+  loadUsers();
+  userMenu.show = false;
+}
+
 async function loadAllGroups() {
   try {
     const d = await api('/api/admin/groups');
-    if (d.success) {
-      allGroups.value = d.data;
-      if (allGroups.value.length === 0) {
-        alert('频道列表为空，请先在主页创建频道');
-      }
-    } else {
-      alert('加载频道失败: ' + (d.error || JSON.stringify(d)));
-    }
-  } catch (e) {
-    alert('加载频道异常: ' + e.message);
-  }
+    if (d.success) allGroups.value = d.data;
+  } catch (e) {}
 }
 
 async function doCreateGroup() {
@@ -677,6 +818,13 @@ async function doCreateGroup() {
 async function doDeleteGroup(id) {
   if (!confirm('确定删除该频道?')) return;
   const d = await api('/api/admin/groups/' + id, { method: 'DELETE' });
+  if (d.success) loadAllGroups();
+}
+
+async function doClearGroupMessages(id) {
+  if (!confirm('确定清空该频道所有消息? 此操作不可恢复!')) return;
+  const d = await api('/api/messages/group/' + id, { method: 'DELETE' });
+  alert(d.success ? '消息已清空' : (d.error || '失败'));
   if (d.success) loadAllGroups();
 }
 
@@ -751,7 +899,10 @@ async function savePerms() {
 
 // === 初始化 ===
 onMounted(() => {
-  console.log('ARCANUM mounted');
+  // 点击其他地方关闭菜单
+  document.addEventListener('click', () => {
+    userMenu.show = false;
+  });
   
   // 加载主题
   const savedTheme = localStorage.getItem('theme');
@@ -798,12 +949,14 @@ return {
   isAdmin, userPerms, showAdmin, adminTab, users, allGroups, words, stats,
   loginForm, loginError, loginLoading, newUser, createUserLoading, newGroup, createGroupLoading, newWord, userMenu, msgsBox,
   showPermModal, permTarget, permTargetPerms, allPermissions,
+  dmTarget, dmMessages, dmInput, dmMsgsBox,
   canAccessAdmin, canManageUser, hasPerm, hasUserPerm,
   doLogin, doLogout, loadGroups, doEnterChannel, doJoinGroup, doLeaveGroup,
-  loadMessages, doSendMsg, renderMsg, formatTime, toggleTheme,
-  openUserMenu, doAddFriend, doDirectChat, openAdmin,
-  loadUsers, doCreateUser, doBanUser, doUnbanUser, doMuteUser,
-  loadAllGroups, doCreateGroup, doDeleteGroup, loadWords, doAddWord, doDeleteWord, loadStats,
+  loadMessages, doSendMsg, renderMsg, formatTime, uploadFile, previewImage,
+  openUserMenu, doAddFriend, doDirectChat, closeDM, sendDM,
+  toggleTheme, openAdmin,
+  loadUsers, doCreateUser, doBanUser, doUnbanUser, doMuteUser, doKickUser,
+  loadAllGroups, doCreateGroup, doDeleteGroup, doClearGroupMessages, loadWords, doAddWord, doDeleteWord, loadStats,
   openPermModal, togglePerm, savePerms
 };
 }

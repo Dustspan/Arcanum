@@ -7,7 +7,7 @@ use crate::{
     AppState
 };
 
-/// 发送私聊消息
+/// 发送私聊消息 - 不保存到数据库，仅通过WebSocket实时传递
 pub async fn send_direct_message(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -34,14 +34,6 @@ pub async fn send_direct_message(
     let now = chrono::Utc::now().to_rfc3339();
     let msg_type = req.msg_type.unwrap_or_else(|| "text".to_string());
     
-    sqlx::query("INSERT INTO direct_messages (id, sender_id, receiver_id, content, type, file_name, file_size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(&id).bind(&claims.sub).bind(&receiver_id)
-        .bind(&req.content).bind(&msg_type)
-        .bind(&req.file_name).bind(req.file_size.unwrap_or(0))
-        .bind(&now)
-        .execute(&state.db)
-        .await?;
-    
     let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
         .bind(&claims.sub)
         .fetch_optional(&state.db)
@@ -49,7 +41,8 @@ pub async fn send_direct_message(
         .flatten();
     
     // 发送给接收者
-    let _ = state.broadcast.broadcast_to_user(&receiver_id, WsMessage {
+    let _ = state.broadcast.broadcast_to_user(
+        &receiver_id, WsMessage {
         event: "direct_message".into(),
         data: json!({
             "id": id,
@@ -59,6 +52,26 @@ pub async fn send_direct_message(
             "receiverId": receiver_id,
             "content": req.content,
             "msgType": msg_type,
+            "fileName": req.file_name,
+            "fileSize": req.file_size,
+            "createdAt": now
+        })
+    });
+    
+    // 同时发回给发送者（用于多设备同步）
+    let _ = state.broadcast.broadcast_to_user(
+        &claims.sub, WsMessage {
+        event: "direct_message".into(),
+        data: json!({
+            "id": id,
+            "senderId": claims.sub,
+            "senderNickname": claims.nickname,
+            "senderAvatar": avatar,
+            "receiverId": receiver_id,
+            "content": req.content,
+            "msgType": msg_type,
+            "fileName": req.file_name,
+            "fileSize": req.file_size,
             "createdAt": now
         })
     });
@@ -69,6 +82,7 @@ pub async fn send_direct_message(
             "id": id,
             "receiverId": receiver_id,
             "content": req.content,
+            "msgType": msg_type,
             "createdAt": now
         }
     })))
@@ -82,105 +96,33 @@ pub struct DirectMessageRequest {
     pub file_size: Option<i64>,
 }
 
-/// 获取私聊消息列表
+/// 获取私聊消息列表 - 返回空列表（不保存历史）
 pub async fn get_direct_messages(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(user_id): Path<String>
+    Path(_user_id): Path<String>
 ) -> Result<Json<serde_json::Value>> {
-    let claims = get_claims_full(&headers, &state).await?;
+    let _claims = get_claims_full(&headers, &state).await?;
     
-    let messages: Vec<(String, String, String, Option<String>, String, String, Option<String>, i64, i64, String)> = sqlx::query_as(r#"
-        SELECT dm.id, dm.sender_id, u.nickname, u.avatar, dm.content, dm.type, dm.file_name, dm.file_size, dm.read, dm.created_at
-        FROM direct_messages dm
-        JOIN users u ON dm.sender_id = u.id
-        WHERE (dm.sender_id = ? AND dm.receiver_id = ?) OR (dm.sender_id = ? AND dm.receiver_id = ?)
-        ORDER BY dm.created_at ASC
-        LIMIT 100
-    "#)
-    .bind(&claims.sub).bind(&user_id)
-    .bind(&user_id).bind(&claims.sub)
-    .fetch_all(&state.db)
-    .await?;
-    
-    // 标记为已读
-    sqlx::query("UPDATE direct_messages SET read = 1 WHERE sender_id = ? AND receiver_id = ? AND read = 0")
-        .bind(&user_id).bind(&claims.sub)
-        .execute(&state.db)
-        .await?;
-    
+    // 不保存历史，返回空列表
     Ok(Json(json!({
         "success": true,
-        "data": messages.iter().map(|m| json!({
-            "id": m.0,
-            "senderId": m.1,
-            "senderNickname": m.2,
-            "senderAvatar": m.3,
-            "content": m.4,
-            "msgType": m.5,
-            "fileName": m.6,
-            "fileSize": m.7,
-            "read": m.8 == 1,
-            "createdAt": m.9
-        })).collect::<Vec<_>>()
+        "data": [],
+        "message": "私聊消息不保存历史记录"
     })))
 }
 
-/// 获取私聊会话列表
+/// 获取私聊会话列表 - 返回空列表（不保存历史）
 pub async fn get_conversations(
     State(state): State<AppState>,
     headers: HeaderMap
 ) -> Result<Json<serde_json::Value>> {
-    let claims = get_claims_full(&headers, &state).await?;
+    let _claims = get_claims_full(&headers, &state).await?;
     
-    let conversations: Vec<(String, String, Option<String>, String, i64)> = sqlx::query_as(r#"
-        SELECT u.id, u.nickname, u.avatar, dm.content, dm.read
-        FROM (
-            SELECT 
-                CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END as other_user,
-                MAX(created_at) as latest_time
-            FROM direct_messages
-            WHERE sender_id = ? OR receiver_id = ?
-            GROUP BY other_user
-        ) latest
-        JOIN users u ON u.id = latest.other_user
-        JOIN direct_messages dm ON (
-            (dm.sender_id = ? AND dm.receiver_id = latest.other_user) OR
-            (dm.sender_id = latest.other_user AND dm.receiver_id = ?)
-        ) AND dm.created_at = latest.latest_time
-        ORDER BY latest.latest_time DESC
-    "#)
-    .bind(&claims.sub)
-    .bind(&claims.sub).bind(&claims.sub)
-    .bind(&claims.sub).bind(&claims.sub)
-    .fetch_all(&state.db)
-    .await?;
-    
-    // 获取未读数
-    let unread_counts: Vec<(String, i64)> = sqlx::query_as(r#"
-        SELECT sender_id, COUNT(*) as count
-        FROM direct_messages
-        WHERE receiver_id = ? AND read = 0
-        GROUP BY sender_id
-    "#)
-    .bind(&claims.sub)
-    .fetch_all(&state.db)
-    .await?;
-    
-    let unread_map: std::collections::HashMap<String, i64> = unread_counts.into_iter().collect();
-    
+    // 不保存历史，返回空列表
     Ok(Json(json!({
         "success": true,
-        "data": conversations.iter().map(|c| {
-            let unread = unread_map.get(&c.0).copied().unwrap_or(0);
-            json!({
-                "userId": c.0,
-                "nickname": c.1,
-                "avatar": c.2,
-                "lastMessage": c.3.chars().take(50).collect::<String>(),
-                "unread": unread
-            })
-        }).collect::<Vec<_>>()
+        "data": []
     })))
 }
 
@@ -226,7 +168,8 @@ pub async fn add_friend(
         .await?;
     
     // 通知对方
-    let _ = state.broadcast.broadcast_to_user(&friend_id, WsMessage {
+    let _ = state.broadcast.broadcast_to_user(
+        &friend_id, WsMessage {
         event: "friend_request".into(),
         data: json!({
             "from": claims.nickname,
@@ -272,8 +215,8 @@ pub async fn get_friends(
 ) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
     
-    let friends: Vec<(String, String, Option<String>)> = sqlx::query_as(r#"
-        SELECT u.id, u.nickname, u.avatar
+    let friends: Vec<(String, String, Option<String>, i64)> = sqlx::query_as(r#"
+        SELECT u.id, u.nickname, u.avatar, u.online
         FROM friendships f
         JOIN users u ON f.friend_id = u.id
         WHERE f.user_id = ? AND f.status = 'accepted'
@@ -287,7 +230,8 @@ pub async fn get_friends(
         "data": friends.iter().map(|f| json!({
             "id": f.0,
             "nickname": f.1,
-            "avatar": f.2
+            "avatar": f.2,
+            "online": f.3 == 1
         })).collect::<Vec<_>>()
     })))
 }
