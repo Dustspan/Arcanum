@@ -164,6 +164,20 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
         )
     "#).execute(pool).await?;
     
+    // 邀请链接表
+    query(r#"
+        CREATE TABLE IF NOT EXISTS invite_links (
+            id TEXT PRIMARY KEY,
+            code TEXT UNIQUE NOT NULL,
+            group_id TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            max_uses INTEGER DEFAULT 0,
+            uses INTEGER DEFAULT 0,
+            expires_at TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    "#).execute(pool).await?;
+    
     // 初始化权限列表
     let permissions = vec![
         ("user_create", "创建用户"),

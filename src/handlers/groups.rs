@@ -227,3 +227,121 @@ pub async fn get_group_members(
         })).collect::<Vec<_>>()
     })))
 }
+
+// 邀请链接功能
+use rand::Rng;
+
+/// 创建邀请链接
+pub async fn create_invite_link(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(group_id): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    // 检查是否是频道所有者或管理员
+    let owner: Option<String> = sqlx::query_scalar("SELECT owner_id FROM groups WHERE id = ?")
+        .bind(&group_id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or(crate::error::AppError::NotFound)?;
+    
+    if owner.as_deref() != Some(&claims.sub) && claims.role != "admin" {
+        return Err(crate::error::AppError::Forbidden);
+    }
+    
+    // 生成随机邀请码
+    let code: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(8)
+        .map(char::from)
+        .collect();
+    
+    let id = uuid::Uuid::new_v4().to_string();
+    
+    sqlx::query("INSERT INTO invite_links (id, code, group_id, created_by) VALUES (?, ?, ?, ?)")
+        .bind(&id).bind(&code).bind(&group_id).bind(&claims.sub)
+        .execute(&state.db)
+        .await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "code": code,
+            "link": format!("/invite/{}", code)
+        }
+    })))
+}
+
+/// 通过邀请链接加入频道
+pub async fn join_by_invite(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(code): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    // 获取邀请链接信息
+    let invite: Option<(String, String, i64, i64, Option<String>)> = sqlx::query_as(
+        "SELECT id, group_id, max_uses, uses, expires_at FROM invite_links WHERE code = ?"
+    )
+    .bind(&code)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    let invite = invite.ok_or(crate::error::AppError::BadRequest("邀请链接无效".to_string()))?;
+    
+    // 检查是否过期
+    if let Some(expires) = &invite.4 {
+        if chrono::DateTime::parse_from_rfc3339(expires)
+            .map(|d| d.timestamp() < chrono::Utc::now().timestamp())
+            .unwrap_or(false)
+        {
+            return Err(crate::error::AppError::BadRequest("邀请链接已过期".to_string()));
+        }
+    }
+    
+    // 检查使用次数
+    if invite.2 > 0 && invite.3 >= invite.2 {
+        return Err(crate::error::AppError::BadRequest("邀请链接已用完".to_string()));
+    }
+    
+    // 检查是否已是成员
+    let member: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM group_members WHERE group_id = ? AND user_id = ?"
+    )
+    .bind(&invite.1).bind(&claims.sub)
+    .fetch_optional(&state.db)
+    .await?;
+    
+    if member.is_some() {
+        return Err(crate::error::AppError::BadRequest("你已经是频道成员".to_string()));
+    }
+    
+    // 加入频道
+    let member_id = uuid::Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO group_members (id, group_id, user_id) VALUES (?, ?, ?)")
+        .bind(&member_id).bind(&invite.1).bind(&claims.sub)
+        .execute(&state.db)
+        .await?;
+    
+    // 更新使用次数
+    sqlx::query("UPDATE invite_links SET uses = uses + 1 WHERE id = ?")
+        .bind(&invite.0)
+        .execute(&state.db)
+        .await?;
+    
+    // 获取频道信息
+    let group_name: String = sqlx::query_scalar("SELECT name FROM groups WHERE id = ?")
+        .bind(&invite.1)
+        .fetch_one(&state.db)
+        .await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "groupId": invite.1,
+            "groupName": group_name
+        }
+    })))
+}

@@ -95,3 +95,81 @@ async fn check_database(pool: &SqlitePool) -> &'static str {
         }
     }
 }
+
+/// 获取系统统计数据
+pub async fn get_statistics(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let claims = crate::handlers::auth::get_claims_full(&headers, &state).await?;
+    crate::utils::check_permission(&claims, "admin")?;
+    
+    // 用户统计
+    let total_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+        .fetch_one(&state.db).await?;
+    let online_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE online = 1")
+        .fetch_one(&state.db).await?;
+    let banned_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE status = 'banned'")
+        .fetch_one(&state.db).await?;
+    
+    // 频道统计
+    let total_groups: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM groups")
+        .fetch_one(&state.db).await?;
+    let active_groups: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT group_id) FROM group_members")
+        .fetch_one(&state.db).await?;
+    
+    // 消息统计
+    let total_messages: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages")
+        .fetch_one(&state.db).await?;
+    let today_messages: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM messages WHERE date(created_at) = date('now')"
+    )
+    .fetch_one(&state.db).await?;
+    
+    // 文件统计
+    let total_files: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages WHERE type IN ('image', 'file')")
+        .fetch_one(&state.db).await?;
+    let total_file_size: i64 = sqlx::query_scalar("SELECT COALESCE(SUM(file_size), 0) FROM messages WHERE type IN ('image', 'file')")
+        .fetch_one(&state.db).await?;
+    
+    // 私聊统计
+    let total_direct_messages: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM direct_messages")
+        .fetch_one(&state.db).await?;
+    
+    // 好友统计
+    let total_friendships: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM friendships WHERE status = 'accepted'")
+        .fetch_one(&state.db).await?;
+    
+    let uptime = state.stats.uptime_secs();
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "users": {
+                "total": total_users,
+                "online": online_users,
+                "banned": banned_users
+            },
+            "groups": {
+                "total": total_groups,
+                "active": active_groups
+            },
+            "messages": {
+                "total": total_messages,
+                "today": today_messages
+            },
+            "files": {
+                "total": total_files,
+                "totalSize": total_file_size
+            },
+            "direct": {
+                "messages": total_direct_messages,
+                "friendships": total_friendships
+            },
+            "system": {
+                "uptime": uptime,
+                "activeBroadcastGroups": state.broadcast.active_groups()
+            }
+        }
+    })))
+}

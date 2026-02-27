@@ -85,8 +85,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/groups/:id", get(handlers::groups::get_group_info))
         .route("/api/groups/:id", put(handlers::groups::update_group))
         .route("/api/groups/:id/members", get(handlers::groups::get_group_members))
+        .route("/api/groups/:id/invite", post(handlers::groups::create_invite_link))
+        .route("/api/invite/:code", post(handlers::groups::join_by_invite))
         .route("/api/admin/groups", get(handlers::groups::list_all_groups))
         .route("/api/admin/groups/:id", delete(handlers::groups::delete_group))
+        .route("/api/admin/statistics", get(handlers::health::get_statistics))
         // 消息路由
         .route("/api/messages", post(handlers::messages::send_message))
         .route("/api/messages/group/:id", get(handlers::messages::get_messages))
