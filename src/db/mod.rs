@@ -140,6 +140,30 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
         )
     "#).execute(pool).await?;
     
+    // 敏感词表
+    query(r#"
+        CREATE TABLE IF NOT EXISTS sensitive_words (
+            id TEXT PRIMARY KEY,
+            word TEXT UNIQUE NOT NULL,
+            replacement TEXT DEFAULT '***',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    "#).execute(pool).await?;
+    
+    // 操作日志表
+    query(r#"
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            action TEXT NOT NULL,
+            target_type TEXT,
+            target_id TEXT,
+            details TEXT,
+            ip_address TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    "#).execute(pool).await?;
+    
     // 初始化权限列表
     let permissions = vec![
         ("user_create", "创建用户"),

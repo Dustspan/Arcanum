@@ -72,6 +72,12 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/admin/ips", get(handlers::admin::list_banned_ips))
         .route("/api/admin/ips/:ip", delete(handlers::admin::unban_ip))
         .route("/api/admin/ips/:ip", post(handlers::admin::ban_ip))
+        // 敏感词管理
+        .route("/api/admin/sensitive-words", get(handlers::admin::list_sensitive_words))
+        .route("/api/admin/sensitive-words", post(handlers::admin::add_sensitive_word))
+        .route("/api/admin/sensitive-words/:id", delete(handlers::admin::delete_sensitive_word))
+        // 操作日志
+        .route("/api/admin/audit-logs", get(handlers::admin::list_audit_logs))
         // 频道路由
         .route("/api/groups/enter", post(handlers::groups::enter_by_name))
         .route("/api/groups", post(handlers::groups::create_group))

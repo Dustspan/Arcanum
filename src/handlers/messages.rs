@@ -4,7 +4,7 @@ use crate::{
     error::Result, 
     models::SendMessageRequest, 
     handlers::auth::get_claims_full, 
-    utils::{check_permission, is_muted, check_rate_limit},
+    utils::{check_permission, is_muted, check_rate_limit, filter_sensitive_words, log_action},
     broadcast::WsMessage,
     AppState
 };
@@ -59,6 +59,9 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
     if req.content.is_empty() { return Err(crate::error::AppError::BadRequest("消息不能为空".to_string())); }
     if req.content.len() > MAX_MSG_LEN { return Err(crate::error::AppError::BadRequest("消息太长".to_string())); }
     
+    // 敏感词过滤
+    let filtered_content = filter_sensitive_words(&state.db, &req.content).await;
+    
     let member: Option<String> = sqlx::query_scalar("SELECT id FROM group_members WHERE group_id = ? AND user_id = ?")
         .bind(&req.group_id).bind(&claims.sub).fetch_optional(&state.db).await?;
     if member.is_none() { return Err(crate::error::AppError::Forbidden); }
@@ -70,7 +73,7 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
     let reply_to = req.reply_to.clone();
     
     sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, file_name, file_size, burn_after, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(&id).bind(&claims.sub).bind(&req.group_id).bind(&req.content).bind(&msg_type)
+        .bind(&id).bind(&claims.sub).bind(&req.group_id).bind(&filtered_content).bind(&msg_type)
         .bind(&req.file_name).bind(req.file_size.unwrap_or(0)).bind(burn).bind(&reply_to).bind(&now)
         .execute(&state.db).await?;
     
@@ -98,7 +101,7 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
             "senderId": claims.sub, 
             "senderNickname": claims.nickname,
             "senderAvatar": avatar, 
-            "content": req.content, 
+            "content": filtered_content, 
             "msgType": msg_type,
             "fileName": req.file_name, 
             "fileSize": req.file_size, 
