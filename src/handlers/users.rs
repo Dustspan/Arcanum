@@ -270,22 +270,18 @@ pub async fn upload_avatar(
             return Err(crate::error::AppError::BadRequest("文件太大".to_string()));
         }
         
-        // 转换为base64
-        let base64 = base64_encode(&data, &content_type);
+        // 使用文件存储
+        let avatar_url = state.storage.save_avatar(&data, &content_type)
+            .map_err(|e| crate::error::AppError::Internal(format!("保存失败: {}", e)))?;
         
         sqlx::query("UPDATE users SET avatar = ? WHERE id = ?")
-            .bind(&base64).bind(&claims.sub)
+            .bind(&avatar_url).bind(&claims.sub)
             .execute(&state.db).await?;
         
-        return Ok(Json(json!({"success": true, "data": {"avatar": base64}})));
+        return Ok(Json(json!({"success": true, "data": {"avatar": avatar_url}})));
     }
     
     Err(crate::error::AppError::BadRequest("未找到文件".to_string()))
-}
-
-fn base64_encode(data: &[u8], content_type: &str) -> String {
-    use base64::{Engine as _, engine::general_purpose};
-    format!("data:{};base64,{}", content_type, general_purpose::STANDARD.encode(data))
 }
 
 /// 获取用户公开信息（包括在线状态）- 任何登录用户都可访问

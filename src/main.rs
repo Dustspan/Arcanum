@@ -3,9 +3,9 @@ use std::sync::Arc;
 use axum::{routing::{get, post, delete, put}, Router, response::Html};
 use sqlx::SqlitePool;
 use tokio::sync::broadcast;
-use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer};
+use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer, services::ServeDir};
 
-mod config; mod db; mod error; mod handlers; mod models; mod utils; mod ws; mod static_files;
+mod config; mod db; mod error; mod handlers; mod models; mod utils; mod ws; mod static_files; mod storage;
 
 pub type AppState = Arc<AppStateInner>;
 
@@ -13,6 +13,7 @@ pub struct AppStateInner {
     pub db: SqlitePool,
     pub tx: broadcast::Sender<ws::WsMessage>,
     pub config: config::Config,
+    pub storage: storage::FileStorage,
 }
 
 #[tokio::main]
@@ -25,8 +26,14 @@ async fn main() -> anyhow::Result<()> {
     db::run_migrations(&db).await?;
     db::init_admin(&db, &config).await.ok();
     
+    let storage = storage::FileStorage::new(&config.data_dir)?;
+    
     let (tx, _) = broadcast::channel(1000);
-    let state: AppState = Arc::new(AppStateInner { db, tx, config });
+    let state: AppState = Arc::new(AppStateInner { db, tx, config, storage });
+    
+    // 静态文件服务
+    let files_service = ServeDir::new(state.storage.base_path())
+        .append_index_html_on_directories(false);
     
     let app = Router::new()
         .route("/", get(|| async { Html(static_files::INDEX_HTML) }))
@@ -67,12 +74,15 @@ async fn main() -> anyhow::Result<()> {
         // WebSocket
         .route("/ws", get(ws::ws_handler))
         .route("/health", get(|| async { "OK" }))
+        // 静态文件服务
+        .nest_service("/files", files_service)
         .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
     
     let addr: SocketAddr = format!("0.0.0.0:{}", std::env::var("PORT").unwrap_or_else(|_| "3000".to_string())).parse()?;
     tracing::info!("ARCANUM: http://{}", addr);
+    tracing::info!("Data directory: {}", std::env::var("DATA_DIR").unwrap_or_else(|_| "./data".to_string()));
     
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;

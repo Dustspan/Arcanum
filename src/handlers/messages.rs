@@ -14,12 +14,10 @@ const MAX_MSG_LEN: usize = 5000;
 pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Json(req): Json<SendMessageRequest>) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
     
-    // 检查禁言
     if is_muted(&state.db, &claims.sub).await? {
         return Err(crate::error::AppError::BadRequest("你已被禁言".to_string()));
     }
     
-    // 检查速率限制
     if !check_rate_limit(&state.db, &claims.sub, "message", &state.config).await? {
         return Err(crate::error::AppError::BadRequest("发送太快，请稍后再试".to_string()));
     }
@@ -41,12 +39,10 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
         .bind(&req.file_name).bind(req.file_size.unwrap_or(0)).bind(burn).bind(&now)
         .execute(&state.db).await?;
     
-    // 获取发送者头像
     let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
         .bind(&claims.sub).fetch_optional(&state.db).await?
         .flatten();
     
-    // 广播消息
     let _ = state.tx.send(WsMessage { 
         event: "message".into(), 
         data: json!({
@@ -118,13 +114,11 @@ pub async fn get_messages(State(state): State<AppState>, headers: HeaderMap, Pat
 pub async fn clear_messages(State(state): State<AppState>, headers: HeaderMap, Path(group_id): Path<String>) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
     
-    // 检查权限：管理员或频道所有者
     let owner: Option<String> = sqlx::query_scalar("SELECT owner_id FROM groups WHERE id = ?")
         .bind(&group_id).fetch_optional(&state.db).await?;
     let owner = owner.ok_or(crate::error::AppError::NotFound)?;
     
     if claims.role != "admin" && owner != claims.sub {
-        // 检查是否有删除消息权限
         check_permission(&claims, "message_delete")?;
     }
     
@@ -155,17 +149,14 @@ pub async fn upload_file(
     let claims = get_claims_full(&headers, &state).await?;
     check_permission(&claims, "file_upload")?;
     
-    // 检查禁言
     if is_muted(&state.db, &claims.sub).await? {
         return Err(crate::error::AppError::BadRequest("你已被禁言".to_string()));
     }
     
-    // 检查速率限制
     if !check_rate_limit(&state.db, &claims.sub, "file_upload", &state.config).await? {
         return Err(crate::error::AppError::BadRequest("上传太快，请稍后再试".to_string()));
     }
     
-    // 检查是否是频道成员
     let member: Option<String> = sqlx::query_scalar("SELECT id FROM group_members WHERE group_id = ? AND user_id = ?")
         .bind(&group_id).bind(&claims.sub).fetch_optional(&state.db).await?;
     if member.is_none() { return Err(crate::error::AppError::Forbidden); }
@@ -176,7 +167,6 @@ pub async fn upload_file(
         let content_type = field.content_type().map(|s| s.to_string()).unwrap_or_default();
         let file_name = field.file_name().map(|s| s.to_string()).unwrap_or_else(|| "file".to_string());
         
-        // 检查文件类型
         let is_image = content_type.starts_with("image/");
         let is_text = content_type.starts_with("text/") || file_name.to_lowercase().ends_with(".txt");
         
@@ -192,12 +182,13 @@ pub async fn upload_file(
             return Err(crate::error::AppError::BadRequest("文件太大".to_string()));
         }
         
-        // 转换为base64存储
-        let base64 = if is_image {
-            format!("data:{};base64,{}", content_type, base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &data))
+        // 使用文件存储而不是base64
+        let file_url = if is_image {
+            state.storage.save_image(&data, &content_type)
+                .map_err(|e| crate::error::AppError::Internal(format!("保存失败: {}", e)))?
         } else {
-            // 文本文件直接存储内容
-            String::from_utf8(data.to_vec()).unwrap_or_else(|_| "".to_string())
+            state.storage.save_file(&data, &file_name)
+                .map_err(|e| crate::error::AppError::Internal(format!("保存失败: {}", e)))?
         };
         
         let id = uuid::Uuid::new_v4().to_string();
@@ -205,16 +196,14 @@ pub async fn upload_file(
         let msg_type = if is_image { "image" } else { "file" };
         
         sqlx::query("INSERT INTO messages (id, sender_id, group_id, content, type, file_name, file_size, burn_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)")
-            .bind(&id).bind(&claims.sub).bind(&group_id).bind(&base64).bind(msg_type)
+            .bind(&id).bind(&claims.sub).bind(&group_id).bind(&file_url).bind(msg_type)
             .bind(&file_name).bind(data.len() as i64).bind(&now)
             .execute(&state.db).await?;
         
-        // 获取发送者头像
         let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
             .bind(&claims.sub).fetch_optional(&state.db).await?
             .flatten();
         
-        // 直接广播消息 - 不需要前端再通过WebSocket发送
         let _ = state.tx.send(WsMessage { 
             event: "message".into(), 
             data: json!({
@@ -223,7 +212,7 @@ pub async fn upload_file(
                 "senderId": claims.sub, 
                 "senderNickname": claims.nickname,
                 "senderAvatar": avatar, 
-                "content": base64, 
+                "content": file_url, 
                 "msgType": msg_type,
                 "fileName": file_name, 
                 "fileSize": data.len(), 
@@ -240,7 +229,7 @@ pub async fn upload_file(
                 "senderId": claims.sub,
                 "senderNickname": claims.nickname,
                 "senderAvatar": avatar,
-                "content": base64,
+                "content": file_url,
                 "msgType": msg_type,
                 "fileName": file_name,
                 "fileSize": data.len(),

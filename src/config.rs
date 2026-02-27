@@ -10,6 +10,7 @@ pub struct Config {
     pub max_file_size: usize,
     pub rate_limit_messages: usize,
     pub rate_limit_window_secs: i64,
+    pub data_dir: String,
 }
 
 impl Config {
@@ -20,9 +21,10 @@ impl Config {
             jwt_expires: env::var("JWT_EXPIRES").ok().and_then(|s| s.parse().ok()).unwrap_or(604800),
             admin_uid: env::var("ADMIN_UID").unwrap_or_else(|_| "ARCANUM-ADMIN-0000".to_string()),
             admin_password: env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin123456".to_string()),
-            max_file_size: env::var("MAX_FILE_SIZE").ok().and_then(|s| s.parse().ok()).unwrap_or(5 * 1024 * 1024), // 5MB default
-            rate_limit_messages: env::var("RATE_LIMIT_MESSAGES").ok().and_then(|s| s.parse().ok()).unwrap_or(10), // 10 messages per window
-            rate_limit_window_secs: env::var("RATE_LIMIT_WINDOW").ok().and_then(|s| s.parse().ok()).unwrap_or(60), // 60 seconds window
+            max_file_size: env::var("MAX_FILE_SIZE").ok().and_then(|s| s.parse().ok()).unwrap_or(5 * 1024 * 1024),
+            rate_limit_messages: env::var("RATE_LIMIT_MESSAGES").ok().and_then(|s| s.parse().ok()).unwrap_or(10),
+            rate_limit_window_secs: env::var("RATE_LIMIT_WINDOW").ok().and_then(|s| s.parse().ok()).unwrap_or(60),
+            data_dir: env::var("DATA_DIR").unwrap_or_else(|_| "./data".to_string()),
         })
     }
 }
