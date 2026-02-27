@@ -1,8 +1,8 @@
 # 构建阶段
-FROM rust:1.75-alpine AS builder
+FROM rust:1.82-alpine AS builder
 RUN apk add --no-cache musl-dev
 WORKDIR /app
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release && rm -rf src
 COPY src ./src
