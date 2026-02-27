@@ -69,6 +69,17 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .reply-btn:hover{opacity:1;color:var(--accent)}
 .reply-preview{padding:8px 12px;background:var(--card);border-bottom:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between;align-items:center}
 .reply-preview b{color:var(--accent)}
+.member-item{display:flex;align-items:center;gap:12px;padding:8px;border-bottom:1px solid var(--border)}
+.member-item:last-child{border-bottom:none}
+.member-avatar{width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:500;color:#000;overflow:hidden}
+.member-avatar img{width:100%;height:100%;object-fit:cover}
+.member-info{flex:1}
+.member-nick{font-size:14px;font-weight:500}
+.member-badge{font-size:10px;padding:2px 6px;border-radius:4px;margin-left:8px}
+.member-badge.admin{background:var(--accent);color:#000}
+.member-status{font-size:11px;margin-top:2px}
+.member-status.online{color:var(--success)}
+.member-status.offline{color:var(--muted)}
 .typing-indicator{padding:4px 12px;font-size:11px;color:var(--muted);font-style:italic}
 .group-announcement{padding:8px 12px;background:rgba(0,255,255,.1);border-bottom:1px solid var(--border);font-size:12px;color:var(--accent);cursor:pointer}
 .group-announcement:hover{background:rgba(0,255,255,.15)}
@@ -180,6 +191,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <button class="chat-back" id="leaveChatBtn">←</button>
 <h2 id="chatTitle">聊天</h2>
 <div class="chat-header-actions">
+<button class="chat-action-btn" id="membersBtn" title="成员">👥</button>
 <button class="chat-action-btn" id="searchBtn" title="搜索">🔍</button>
 <button class="chat-action-btn" id="groupInfoBtn" title="频道信息">ℹ</button>
 </div>
@@ -307,6 +319,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <input class="input" id="searchInput" placeholder="输入关键词搜索...">
 <div id="searchResults" style="margin-top:12px;max-height:300px;overflow-y:auto"></div>
 </div>
+</div>
+</div>
+
+<div class="modal-overlay hidden" id="membersModal">
+<div class="modal">
+<div class="modal-header">
+<h3>频道成员</h3>
+<button class="modal-close" id="closeMembersModalBtn">×</button>
+</div>
+<div id="membersList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
 </div>
 </div>
 
@@ -890,6 +912,29 @@ $("searchResults").innerHTML="";
 $("searchInput").focus();
 }
 
+// 成员列表
+async function showMembers(){
+if(!groupId)return;
+try{
+const d=await api("/api/groups/"+groupId+"/members");
+if(d.success){
+const el=$("membersList");
+el.innerHTML=d.data.map(m=>{
+const avatarHtml=m.avatar?'<img src="'+m.avatar+'" alt="">':m.nickname.charAt(0).toUpperCase();
+const roleBadge=m.role==="admin"?'<span class="member-badge admin">管理员</span>':'';
+return'<div class="member-item">'+
+'<div class="member-avatar">'+avatarHtml+'</div>'+
+'<div class="member-info">'+
+'<div class="member-nick">'+esc(m.nickname)+roleBadge+'</div>'+
+'<div class="member-status '+(m.isOnline?"online":"offline")+'">'+(m.isOnline?"在线":"离线")+'</div>'+
+'</div>'+
+'</div>';
+}).join("");
+$("membersModal").classList.remove("hidden");
+}
+}catch(e){}
+}
+
 async function showUserMenu(e,sid,nick){
 e.stopPropagation();
 const menu=$("userMenu");
@@ -1022,6 +1067,9 @@ $("groupInfoBtn").onclick=showGroupInfo;
 $("closeSearchModalBtn").onclick=function(){$("searchModal").classList.add("hidden")};
 $("searchModal").onclick=function(e){if(e.target===this)$("searchModal").classList.add("hidden")};
 $("searchBtn").onclick=showSearch;
+$("closeMembersModalBtn").onclick=function(){$("membersModal").classList.add("hidden")};
+$("membersModal").onclick=function(e){if(e.target===this)$("membersModal").classList.add("hidden")};
+$("membersBtn").onclick=showMembers;
 $("searchInput").oninput=function(){
 clearTimeout(searchTimeout);
 searchTimeout=setTimeout(doSearch,300);

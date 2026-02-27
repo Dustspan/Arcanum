@@ -185,3 +185,45 @@ pub async fn get_group_info(
         }
     })))
 }
+
+/// 获取频道成员列表
+pub async fn get_group_members(
+    State(state): State<AppState>, 
+    headers: HeaderMap, 
+    Path(id): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims(&headers, &state.config)?;
+    
+    // 检查是否是频道成员
+    let member: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM group_members WHERE group_id = ? AND user_id = ?"
+    )
+    .bind(&id).bind(&claims.sub).fetch_optional(&state.db).await?;
+    
+    if member.is_none() {
+        return Err(crate::error::AppError::Forbidden);
+    }
+    
+    // 获取成员列表
+    let members: Vec<(String, String, Option<String>, String)> = sqlx::query_as(r#"
+        SELECT u.id, u.nickname, u.avatar, u.role
+        FROM group_members gm
+        JOIN users u ON gm.user_id = u.id
+        WHERE gm.group_id = ?
+        ORDER BY u.role = 'admin' DESC, gm.joined_at ASC
+    "#)
+    .bind(&id)
+    .fetch_all(&state.db)
+    .await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": members.iter().map(|m| json!({
+            "id": m.0,
+            "nickname": m.1,
+            "avatar": m.2,
+            "role": m.3,
+            "isOnline": true  // 简化处理，实际可以通过WebSocket连接状态判断
+        })).collect::<Vec<_>>()
+    })))
+}
