@@ -172,6 +172,24 @@ async fn handle_msg(state: &AppState, user_id: &str, nickname: &str, msg: WsMess
         return;
     }
     
+    // 处理输入状态
+    if msg.event == "typing" {
+        #[derive(serde::Deserialize)]
+        struct TypingData { group_id: String }
+        
+        if let Ok(d) = serde_json::from_value::<TypingData>(msg.data.clone()) {
+            let _ = state.broadcast.broadcast_to_group(&d.group_id, WsMessage {
+                event: "typing".into(),
+                data: serde_json::json!({
+                    "groupId": d.group_id,
+                    "userId": user_id,
+                    "nickname": nickname
+                })
+            });
+        }
+        return;
+    }
+    
     if msg.event != "message" { return; }
     
     #[derive(serde::Deserialize)]

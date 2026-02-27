@@ -57,6 +57,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right}
 .msg-bubble.out .msg-time{color:rgba(0,0,0,.4)}
 .msg-read{margin-left:8px;color:var(--accent)}
+.typing-indicator{padding:4px 12px;font-size:11px;color:var(--muted);font-style:italic}
 .msg-image{max-width:100%;max-height:300px;border-radius:8px;cursor:pointer;display:block}
 .msg-file{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;margin-top:4px}
 .msg-file-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center}
@@ -160,6 +161,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div style="width:30px"></div>
 </div>
 <div class="chat-msgs" id="msgs"></div>
+<div class="typing-indicator hidden" id="typingIndicator"></div>
 <div class="chat-input">
 <textarea id="msgInput" rows="1" placeholder="消息..."></textarea>
 <div class="chat-actions">
@@ -427,6 +429,52 @@ if(!content||!ws)return;
 if(content.length>5000){alert("消息太长");return}
 ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content}}));
 input.value="";input.style.height="auto";
+clearTyping();
+}
+
+// 输入状态
+let typingTimeout=null;
+let isTyping=false;
+
+function sendTyping(){
+if(!ws||isTyping)return;
+isTyping=true;
+ws.send(JSON.stringify({event:"typing",data:{group_id:groupId}}));
+typingTimeout=setTimeout(()=>{isTyping=false;},3000);
+}
+
+function clearTyping(){
+if(typingTimeout){clearTimeout(typingTimeout);typingTimeout=null;}
+isTyping=false;
+}
+
+// 显示输入状态
+let typingUsers=new Map();
+let typingHideTimeout=null;
+
+function showTyping(nickname){
+const el=$("typingIndicator");
+if(!el)return;
+typingUsers.set(nickname,Date.now());
+updateTypingDisplay();
+}
+
+function updateTypingDisplay(){
+const el=$("typingIndicator");
+if(!el)return;
+// 清理超过3秒的用户
+const now=Date.now();
+typingUsers=new Map([...typingUsers].filter(([_,t])=>now-t<3000));
+if(typingUsers.size===0){
+el.textContent="";
+el.classList.add("hidden");
+}else if(typingUsers.size===1){
+el.textContent=[...typingUsers.keys()][0]+" 正在输入...";
+el.classList.remove("hidden");
+}else{
+el.textContent=[...typingUsers.keys()].slice(0,3).join(", ")+" 正在输入...";
+el.classList.remove("hidden");
+}
 }
 
 function showUploadProgress(){$("uploadProgress").classList.remove("hidden")}
@@ -499,6 +547,12 @@ if(m.event==="message_read"){
 // 处理已读状态更新
 if(m.data.groupId===groupId){
 updateReadCount(m.data.id,m.data.readCount);
+}
+}
+if(m.event==="typing"){
+// 处理输入状态
+if(m.data.groupId===groupId&&m.data.userId!==user.id){
+showTyping(m.data.nickname);
 }
 }
 }
@@ -737,7 +791,7 @@ $("cipherInput").onkeydown=function(e){if(e.key==="Enter")enterChannel()};
 $("leaveChatBtn").onclick=leaveChat;
 $("sendBtn").onclick=send;
 $("msgInput").onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};
-$("msgInput").oninput=function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,80)+"px"};
+$("msgInput").oninput=function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,80)+"px";sendTyping()};
 $("imageInput").onchange=uploadImage;
 $("fileInput").onchange=uploadFile;
 $("showAdminBtn").onclick=showAdmin;
