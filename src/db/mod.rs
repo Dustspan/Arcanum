@@ -64,6 +64,20 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
     // 添加消息置顶列
     query("ALTER TABLE messages ADD COLUMN pinned INTEGER DEFAULT 0").execute(pool).await.ok();
     
+    // 消息提及表
+    query(r#"
+        CREATE TABLE IF NOT EXISTS mentions (
+            id TEXT PRIMARY KEY,
+            message_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            mentioned_by TEXT NOT NULL,
+            group_id TEXT NOT NULL,
+            read INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(message_id, user_id)
+        )
+    "#).execute(pool).await?;
+    
     // 消息已读状态表
     query(r#"
         CREATE TABLE IF NOT EXISTS message_reads (

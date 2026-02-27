@@ -15,6 +15,8 @@ pub struct WsMessage {
 pub struct BroadcastManager {
     /// 频道ID -> 广播发送器
     groups: DashMap<String, GroupTx>,
+    /// 用户ID -> 广播发送器（用于个人通知）
+    users: DashMap<String, GroupTx>,
     /// 全局广播通道（用于系统消息）
     global: broadcast::Sender<WsMessage>,
 }
@@ -24,8 +26,30 @@ impl BroadcastManager {
         let (global, _) = broadcast::channel(1000);
         Self {
             groups: DashMap::new(),
+            users: DashMap::new(),
             global,
         }
+    }
+    
+    /// 获取或创建用户的广播通道
+    pub fn get_or_create_user(&self, user_id: &str) -> GroupTx {
+        self.users.entry(user_id.to_string())
+            .or_insert_with(|| {
+                let (tx, _) = broadcast::channel(100);
+                tx
+            })
+            .clone()
+    }
+    
+    /// 向用户发送消息
+    pub fn broadcast_to_user(&self, user_id: &str, msg: WsMessage) -> Result<usize, broadcast::error::SendError<WsMessage>> {
+        let tx = self.get_or_create_user(user_id);
+        tx.send(msg)
+    }
+    
+    /// 订阅用户通知
+    pub fn subscribe_user(&self, user_id: &str) -> broadcast::Receiver<WsMessage> {
+        self.get_or_create_user(user_id).subscribe()
     }
     
     /// 获取或创建频道的广播通道
@@ -88,6 +112,7 @@ impl Clone for BroadcastManager {
     fn clone(&self) -> Self {
         Self {
             groups: self.groups.clone(),
+            users: self.users.clone(),
             global: self.global.clone(),
         }
     }

@@ -11,6 +11,40 @@ use crate::{
 
 const MAX_MSG_LEN: usize = 5000;
 
+/// 解析消息中的@提及
+fn parse_mentions(content: &str) -> Vec<String> {
+    let mut mentions = Vec::new();
+    let chars: Vec<char> = content.chars().collect();
+    let mut i = 0;
+    
+    while i < chars.len() {
+        if chars[i] == '@' {
+            let mut name = String::new();
+            i += 1;
+            // 收集@后面的用户名（允许中文、英文、数字、下划线）
+            while i < chars.len() {
+                let c = chars[i];
+                // 检查是否是中文字符 (Unicode范围)
+                let is_chinese = (c >= '\u{4E00}' && c <= '\u{9FFF}') || 
+                                 (c >= '\u{3400}' && c <= '\u{4DBF}');
+                if c.is_alphanumeric() || c == '_' || is_chinese {
+                    name.push(c);
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+            if !name.is_empty() && name.len() <= 20 {
+                mentions.push(name);
+            }
+        } else {
+            i += 1;
+        }
+    }
+    
+    mentions
+}
+
 pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Json(req): Json<SendMessageRequest>) -> Result<Json<serde_json::Value>> {
     let claims = get_claims_full(&headers, &state).await?;
     
@@ -78,6 +112,58 @@ pub async fn send_message(State(state): State<AppState>, headers: HeaderMap, Jso
             "createdAt": now
         })
     });
+    
+    // 解析@提及
+    let mentions = parse_mentions(&req.content);
+    for mentioned_nick in mentions {
+        // 查找被提及的用户
+        let mentioned_user: Option<String> = sqlx::query_scalar(
+            "SELECT id FROM users WHERE nickname = ?"
+        )
+        .bind(&mentioned_nick)
+        .fetch_optional(&state.db)
+        .await
+        .ok()
+        .flatten();
+        
+        if let Some(mentioned_id) = mentioned_user {
+            // 检查用户是否在频道中
+            let is_member: Option<String> = sqlx::query_scalar(
+                "SELECT id FROM group_members WHERE group_id = ? AND user_id = ?"
+            )
+            .bind(&req.group_id)
+            .bind(&mentioned_id)
+            .fetch_optional(&state.db)
+            .await
+            .ok()
+            .flatten();
+            
+            if is_member.is_some() {
+                let mention_id = uuid::Uuid::new_v4().to_string();
+                let _ = sqlx::query(
+                    "INSERT OR IGNORE INTO mentions (id, message_id, user_id, mentioned_by, group_id) VALUES (?, ?, ?, ?, ?)"
+                )
+                .bind(&mention_id)
+                .bind(&id)
+                .bind(&mentioned_id)
+                .bind(&claims.sub)
+                .bind(&req.group_id)
+                .execute(&state.db)
+                .await;
+                
+                // 发送提及通知
+                let _ = state.broadcast.broadcast_to_user(&mentioned_id, WsMessage {
+                    event: "mention".into(),
+                    data: json!({
+                        "messageId": id,
+                        "groupId": req.group_id,
+                        "mentionedBy": claims.nickname,
+                        "content": req.content.chars().take(50).collect::<String>()
+                    })
+                });
+            }
+        }
+    }
     
     Ok(Json(json!({
         "success": true,
@@ -615,4 +701,54 @@ pub async fn toggle_pin_message(
             "pinned": new_pinned == 1
         }
     })))
+}
+
+/// 获取用户的提及列表
+pub async fn get_mentions(
+    State(state): State<AppState>, 
+    headers: HeaderMap
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    let mentions: Vec<(String, String, String, String, String, i64)> = sqlx::query_as(r#"
+        SELECT m.id, m.message_id, u.nickname, g.name, msg.content, m.read
+        FROM mentions m
+        JOIN users u ON m.mentioned_by = u.id
+        JOIN groups g ON m.group_id = g.id
+        JOIN messages msg ON m.message_id = msg.id
+        WHERE m.user_id = ?
+        ORDER BY m.created_at DESC
+        LIMIT 50
+    "#)
+    .bind(&claims.sub)
+    .fetch_all(&state.db)
+    .await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": mentions.iter().map(|m| json!({
+            "id": m.0,
+            "messageId": m.1,
+            "mentionedBy": m.2,
+            "groupName": m.3,
+            "content": m.4.chars().take(100).collect::<String>(),
+            "read": m.5 == 1
+        })).collect::<Vec<_>>()
+    })))
+}
+
+/// 标记提及为已读
+pub async fn mark_mention_read(
+    State(state): State<AppState>, 
+    headers: HeaderMap,
+    Path(id): Path<String>
+) -> Result<Json<serde_json::Value>> {
+    let claims = get_claims_full(&headers, &state).await?;
+    
+    sqlx::query("UPDATE mentions SET read = 1 WHERE id = ? AND user_id = ?")
+        .bind(&id).bind(&claims.sub)
+        .execute(&state.db)
+        .await?;
+    
+    Ok(Json(json!({"success": true})))
 }

@@ -85,6 +85,17 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .msg-row.pinned .msg-bubble{border-color:var(--warn)}
 .pin-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:10px;opacity:.5;margin-left:4px}
 .pin-btn:hover{opacity:1;color:var(--warn)}
+.mention{color:var(--accent);font-weight:500;cursor:pointer}
+.mention:hover{text-decoration:underline}
+.mention-badge{position:absolute;top:-4px;right:-4px;background:var(--error);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;min-width:16px;text-align:center}
+.mention-item{padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
+.mention-item:last-child{border-bottom:none}
+.mention-item.unread{background:rgba(0,255,255,.05)}
+.mention-item:hover{background:rgba(255,255,255,.05)}
+.mention-header{display:flex;justify-content:space-between;margin-bottom:4px}
+.mention-from{font-weight:500;color:var(--accent)}
+.mention-group{font-size:11px;color:var(--muted)}
+.mention-content{font-size:13px;color:var(--text)}
 .typing-indicator{padding:4px 12px;font-size:11px;color:var(--muted);font-style:italic}
 .group-announcement{padding:8px 12px;background:rgba(0,255,255,.1);border-bottom:1px solid var(--border);font-size:12px;color:var(--accent);cursor:pointer}
 .group-announcement:hover{background:rgba(0,255,255,.15)}
@@ -188,7 +199,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 <div id="myChannels"></div>
 <div class="card hidden" id="adminEntry"><button class="btn full" id="showAdminBtn">管理面板</button></div>
-<div style="margin-top:12px"><button class="btn full" id="settingsBtn">⚙ 个人设置</button></div>
+<div style="margin-top:12px">
+<button class="btn full" id="mentionsBtn" style="position:relative">🔔 提及<span class="mention-badge hidden" id="mentionBadge">0</span></button>
+</div>
+<div style="margin-top:8px"><button class="btn full" id="settingsBtn">⚙ 个人设置</button></div>
 </div>
 
 <div id="chatView" class="hidden">
@@ -367,6 +381,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 </div>
 
+<div class="modal-overlay hidden" id="mentionsModal">
+<div class="modal">
+<div class="modal-header">
+<h3>提及我的消息</h3>
+<button class="modal-close" id="closeMentionsModalBtn">×</button>
+</div>
+<div id="mentionsList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
+</div>
+</div>
+
 <div class="upload-progress hidden" id="uploadProgress"><span class="loading-spinner"></span>上传中...</div>
 
 <script>
@@ -443,6 +467,11 @@ $("mainPage").classList.remove("hidden");
 if(user.role==="admin"||(user.permissions&&user.permissions.length>0))$("adminEntry").classList.remove("hidden");
 connectWebSocket();
 loadMyChannels();
+loadMentions();
+// 请求通知权限
+if("Notification"in window&&Notification.permission==="default"){
+Notification.requestPermission();
+}
 }
 
 async function loadMyChannels(){
@@ -536,6 +565,11 @@ el.innerHTML+=renderMessage(m);
 if(scroll)el.scrollTop=el.scrollHeight;
 }
 
+// 高亮@提及
+function highlightMentions(text){
+return text.replace(/@([\u4e00-\u9fa5\w]+)/g,'<span class="mention">@$1</span>');
+}
+
 function renderMessage(m){
 const isMe=m.senderId===user.id;
 const isOnline=onlineUsers.has(m.senderId);
@@ -544,7 +578,7 @@ const onlineDot='<span class="online-dot '+(isOnline?"on":"off")+'"></span>';
 let contentHtml="";
 if(m.msgType==="image")contentHtml='<img class="msg-image" src="'+m.content+'" onclick="window.open(\''+m.content+'\',\'_blank\')" loading="lazy">';
 else if(m.msgType==="file"){const size=formatFileSize(m.fileSize);contentHtml='<div class="msg-file"><div class="msg-file-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div class="msg-file-info"><div class="msg-file-name">'+esc(m.fileName||"文件")+'</div><div class="msg-file-size">'+size+'</div></div></div>';}
-else contentHtml=esc(m.content);
+else contentHtml=highlightMentions(esc(m.content));
 // 引用消息
 let replyHtml="";
 if(m.replyTo&&m.replyInfo){
@@ -749,6 +783,14 @@ if(m.event==="typing"){
 // 处理输入状态
 if(m.data.groupId===groupId&&m.data.userId!==user.id){
 showTyping(m.data.nickname);
+}
+}
+if(m.event==="mention"){
+// 处理提及通知
+updateMentionBadge(unreadMentions+1);
+// 可选：显示通知
+if(Notification.permission==="granted"){
+new Notification("有人提及你",{body:m.data.mentionedBy+": "+m.data.content});
 }
 }
 }
@@ -1047,6 +1089,51 @@ alert("头像已更新");
 e.target.value="";
 }
 
+// 提及功能
+let unreadMentions=0;
+
+async function loadMentions(){
+try{
+const d=await api("/api/mentions");
+if(d.success){
+const el=$("mentionsList");
+if(d.data.length===0){
+el.innerHTML='<div class="empty">暂无提及</div>';
+}else{
+el.innerHTML=d.data.map(m=>{
+const readClass=m.read?"":"unread";
+return'<div class="mention-item '+readClass+'" data-mid="'+m.id+'" data-gid="'+m.groupId+'">'+
+'<div class="mention-header">'+
+'<span class="mention-from">'+esc(m.mentionedBy)+'</span>'+
+'<span class="mention-group">'+esc(m.groupName)+'</span>'+
+'</div>'+
+'<div class="mention-content">'+esc(m.content)+'</div>'+
+'</div>';
+}).join("");
+}
+// 更新未读数
+const unread=d.data.filter(m=>!m.read).length;
+updateMentionBadge(unread);
+}
+}catch(e){}
+}
+
+function updateMentionBadge(count){
+unreadMentions=count;
+const badge=$("mentionBadge");
+if(count>0){
+badge.textContent=count>99?"99+":count;
+badge.classList.remove("hidden");
+}else{
+badge.classList.add("hidden");
+}
+}
+
+function showMentions(){
+loadMentions();
+$("mentionsModal").classList.remove("hidden");
+}
+
 async function showUserMenu(e,sid,nick){
 e.stopPropagation();
 const menu=$("userMenu");
@@ -1184,6 +1271,18 @@ $("membersModal").onclick=function(e){if(e.target===this)$("membersModal").class
 $("membersBtn").onclick=showMembers;
 $("settingsBtn").onclick=showSettings;
 $("closeSettingsModalBtn").onclick=function(){$("settingsModal").classList.add("hidden")};
+$("mentionsBtn").onclick=showMentions;
+$("closeMentionsModalBtn").onclick=function(){$("mentionsModal").classList.add("hidden")};
+$("mentionsModal").onclick=function(e){if(e.target===this)$("mentionsModal").classList.add("hidden")};
+$("mentionsList").onclick=function(e){
+const item=e.target.closest(".mention-item");
+if(item){
+const mid=item.dataset.mid;
+api("/api/mentions/"+mid+"/read",{method:"POST"});
+item.classList.remove("unread");
+loadMentions();
+}
+};
 $("settingsModal").onclick=function(e){if(e.target===this)$("settingsModal").classList.add("hidden")};
 $("updateNicknameBtn").onclick=updateNickname;
 $("changePasswordBtn").onclick=changePassword;

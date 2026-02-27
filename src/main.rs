@@ -92,6 +92,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/messages/:id/pin", post(handlers::messages::toggle_pin_message))
         .route("/api/messages/group/:id/read", post(handlers::messages::mark_group_read))
         .route("/api/messages/file/:id", post(handlers::messages::upload_file))
+        .route("/api/mentions", get(handlers::messages::get_mentions))
+        .route("/api/mentions/:id/read", post(handlers::messages::mark_mention_read))
         // WebSocket
         .route("/ws", get(ws::ws_handler))
         .route("/health", get(handlers::health::health_check))
