@@ -5,1856 +5,667 @@ pub const INDEX_HTML: &str = r##"<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="ARCANUM - 加密聊天应用">
+<meta name="description" content="ARCANUM">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
 <title>ARCANUM</title>
 <style>
+/* === 赛博朋克主题 === */
+:root{--bg:#0a0a0f;--bg2:#12121a;--card:#16161f;--card2:#1a1a25;--text:#e0e0e8;--muted:#6a6a7a;--accent:#00f0ff;--accent2:#ff00aa;--border:#2a2a3a;--error:#ff3366;--success:#00ff88;--warn:#ffaa00;--glow:0 0 10px var(--accent),0 0 20px rgba(0,240,255,.3)}
+[data-theme="light"]{--bg:#f0f0f5;--bg2:#e8e8f0;--card:#fff;--card2:#f8f8fc;--text:#1a1a2e;--muted:#6a6a7a;--accent:#0088aa;--accent2:#aa0066;--border:#d0d0da;--glow:none}
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#000;--card:#0d0d0d;--text:#f0f0f0;--muted:#666;--accent:#0ff;--accent2:#f0f;--border:#1a1a1a;--error:#ff4466;--success:#00ff88;--warn:#ffaa00}
-[data-theme="light"]{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--muted:#888;--accent:#088;--accent2:#a0a;--border:#ddd;--error:#c44;--success:#0a0;--warn:#a80}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;min-height:100vh;min-height:100dvh;line-height:1.4;transition:background .3s,color .3s}
-@keyframes glitch{0%,100%{text-shadow:-2px 0 var(--accent2),2px 0 var(--accent)}25%{text-shadow:2px 0 var(--accent2),-2px 0 var(--accent)}50%{text-shadow:-1px 0 var(--accent2),1px 0 var(--accent)}75%{text-shadow:1px 0 var(--accent2),-1px 0 var(--accent)}}
-.glitch{animation:glitch .3s infinite}
-.scanlines::before{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.06),rgba(0,0,0,.06) 1px,transparent 1px,transparent 2px);pointer-events:none;z-index:9999}
-.container{width:100%;max-width:540px;margin:0 auto;padding:12px;min-height:100vh;min-height:100dvh}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;min-height:100dvh;line-height:1.5}
+.container{max-width:540px;margin:0 auto;padding:12px;min-height:100vh}
 .hidden{display:none!important}
-.logo{font-size:clamp(18px,5vw,24px);font-weight:300;letter-spacing:clamp(4px,2vw,8px);text-align:center;padding:clamp(24px,8vw,40px) 0 clamp(16px,4vw,24px);color:var(--accent)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:clamp(12px,3vw,16px);margin:8px 0}
-.input{width:100%;padding:10px 12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:14px;outline:none}
-.input:focus{border-color:var(--accent)}
-.btn{padding:8px 16px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:13px;cursor:pointer;transition:all .2s}
-.btn:hover{background:var(--accent);color:#000}
+
+/* === 赛博朋克效果 === */
+.cyber-border{border:1px solid var(--border);position:relative}
+.cyber-border::before{content:'';position:absolute;top:-1px;left:10px;right:10px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.cyber-glow{box-shadow:var(--glow)}
+.cyber-text{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.scanline{position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.03),rgba(0,0,0,.03) 1px,transparent 1px,transparent 2px);pointer-events:none;z-index:9999}
+
+/* === 组件 === */
+.btn{padding:10px 20px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:4px;font-size:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.btn:hover{background:var(--accent);color:#000;box-shadow:var(--glow)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.full{width:100%}
-.btn.sm{padding:5px 10px;font-size:11px}
+.btn.sm{padding:6px 12px;font-size:12px}
 .btn.danger{border-color:var(--error);color:var(--error)}
 .btn.danger:hover{background:var(--error);color:#fff}
-.btn.warn{border-color:var(--warn);color:var(--warn)}
-.btn.warn:hover{background:var(--warn);color:#000}
 .btn.success{border-color:var(--success);color:var(--success)}
 .btn.success:hover{background:var(--success);color:#000}
-.err{color:var(--error);font-size:12px;margin:8px 0;text-align:center}
-.success{color:var(--success);font-size:12px;margin:8px 0}
-.status{position:fixed;top:8px;right:8px;padding:4px 10px;font-size:10px;border:1px solid var(--border);border-radius:12px;z-index:100}
-.status.on{border-color:var(--accent);color:var(--accent)}
-.status.reconnecting{border-color:var(--warn);color:var(--warn)}
-.channel-card{background:linear-gradient(135deg,rgba(0,255,255,.03),rgba(255,0,255,.03));border:1px solid var(--border);border-radius:12px;padding:14px;margin:8px 0;cursor:pointer;transition:all .2s}
-.channel-card:active{border-color:var(--accent);transform:scale(.99)}
+
+.input{width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:14px;outline:none;transition:border-color .2s}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,240,255,.1)}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+
+.err{color:var(--error);font-size:13px;padding:8px;background:rgba(255,51,102,.1);border-radius:4px;margin-top:8px}
+.success{color:var(--success);font-size:13px;padding:8px;background:rgba(0,255,136,.1);border-radius:4px;margin-top:8px}
+
+/* === 登录页 === */
+.login-logo{font-size:32px;font-weight:700;text-align:center;margin:60px 0 40px;letter-spacing:8px}
+.login-form{display:flex;flex-direction:column;gap:12px}
+
+/* === 主页 === */
+.header{display:flex;justify-content:space-between;align-items:center;padding:8px 0;margin-bottom:12px}
+.header h1{font-size:18px;font-weight:600}
+.header-actions{display:flex;gap:8px}
+
+.sidebar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.channel-list{display:flex;flex-direction:column;gap:8px}
+.channel-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer;transition:all .2s}
+.channel-card:hover{border-color:var(--accent);box-shadow:0 0 10px rgba(0,240,255,.1)}
 .channel-card h3{font-size:15px;margin-bottom:4px}
-.channel-card p{color:var(--muted);font-size:12px}
-.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 24px);height:calc(100dvh - 24px)}
-.chat-header{display:flex;align-items:center;padding:12px;border-bottom:1px solid var(--border);flex-shrink:0}
-.chat-header h2{flex:1;text-align:center;font-size:15px;font-weight:500}
-.chat-header-actions{display:flex;gap:4px}
-.chat-back{background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:4px 8px}
-.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;background:#050505}
-.msg-row{display:flex;align-items:flex-start;gap:8px}
+.channel-card p{font-size:12px;color:var(--muted)}
+
+/* === 聊天 === */
+.chat-header{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--card);border-bottom:1px solid var(--border)}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.msg-row{display:flex;gap:10px}
 .msg-row.me{flex-direction:row-reverse}
-.msg-avatar{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#000;flex-shrink:0;cursor:pointer;overflow:hidden;object-fit:cover;position:relative}
+.msg-avatar{width:36px;height:36px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#000;flex-shrink:0;overflow:hidden}
 .msg-avatar img{width:100%;height:100%;object-fit:cover}
-.msg-avatar .online-dot{position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg)}
-.msg-avatar .online-dot.on{background:var(--success)}
-.msg-avatar .online-dot.off{background:var(--muted)}
-.msg-bubble{max-width:70%;padding:10px 12px;border-radius:12px;font-size:14px;line-height:1.5;word-break:break-word}
-.msg-bubble.in{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px}
-.msg-bubble.out{background:var(--accent);color:#000;border-top-right-radius:4px}
+.msg-bubble{max-width:70%;padding:10px 14px;border-radius:12px;font-size:14px}
+.msg-bubble.in{background:var(--card);border:1px solid var(--border)}
+.msg-bubble.out{background:var(--accent);color:#000}
 .msg-nick{font-size:11px;color:var(--accent);margin-bottom:2px}
-.msg-bubble.out .msg-nick{color:rgba(0,0,0,.5)}
 .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right}
-.msg-bubble.out .msg-time{color:rgba(0,0,0,.4)}
-.msg-read{margin-left:8px;color:var(--accent)}
-.msg-reply{padding:4px 8px;margin-bottom:4px;background:rgba(0,0,0,.1);border-left:2px solid var(--accent);border-radius:4px;font-size:11px;cursor:pointer}
-.msg-reply:hover{background:rgba(0,0,0,.2)}
-.msg-reply-nick{color:var(--accent);font-weight:500;margin-right:8px}
-.msg-reply-content{color:var(--muted)}
-.msg-highlight{animation:highlight 2s}
-@keyframes highlight{0%,100%{background:transparent}50%{background:rgba(0,255,255,.2)}}
-.reply-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:10px;opacity:.5}
-.reply-btn:hover{opacity:1;color:var(--accent)}
-.reply-preview{padding:8px 12px;background:var(--card);border-bottom:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between;align-items:center}
-.reply-preview b{color:var(--accent)}
-.member-item{display:flex;align-items:center;gap:12px;padding:8px;border-bottom:1px solid var(--border)}
-.member-item:last-child{border-bottom:none}
-.member-avatar{width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:500;color:#000;overflow:hidden}
-.member-avatar img{width:100%;height:100%;object-fit:cover}
-.member-info{flex:1}
-.member-nick{font-size:14px;font-weight:500}
-.member-badge{font-size:10px;padding:2px 6px;border-radius:4px;margin-left:8px}
-.member-badge.admin{background:var(--accent);color:#000}
-.member-status{font-size:11px;margin-top:2px}
-.member-status.online{color:var(--success)}
-.member-status.offline{color:var(--muted)}
-.pinned-badge{font-size:10px;background:var(--warn);color:#000;padding:2px 6px;border-radius:4px;margin-left:8px}
-.msg-row.pinned{background:rgba(255,170,0,.05)}
-.msg-row.pinned .msg-bubble{border-color:var(--warn)}
-.pin-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:10px;opacity:.5;margin-left:4px}
-.pin-btn:hover{opacity:1;color:var(--warn)}
-.forward-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:10px;opacity:.5;margin-left:4px}
-.forward-btn:hover{opacity:1;color:var(--accent)}
-.forward-item{padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
-.forward-item:last-child{border-bottom:none}
-.forward-item:hover{background:rgba(255,255,255,.05)}
-.forward-item-name{font-size:14px;font-weight:500}
-.forward-item-members{font-size:11px;color:var(--muted);margin-top:2px}
-.conversation-item{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
-.conversation-item:last-child{border-bottom:none}
-.conversation-item:hover{background:rgba(255,255,255,.05)}
-.friend-item{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border)}
-.friend-item:last-child{border-bottom:none}
-.friend-item:hover{background:rgba(255,255,255,.05)}
-.mention{color:var(--accent);font-weight:500;cursor:pointer}
-.mention:hover{text-decoration:underline}
-.mention-badge{position:absolute;top:-4px;right:-4px;background:var(--error);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;min-width:16px;text-align:center}
-.mention-item{padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
-.mention-item:last-child{border-bottom:none}
-.mention-item.unread{background:rgba(0,255,255,.05)}
-.mention-item:hover{background:rgba(255,255,255,.05)}
-.mention-header{display:flex;justify-content:space-between;margin-bottom:4px}
-.mention-from{font-weight:500;color:var(--accent)}
-.mention-group{font-size:11px;color:var(--muted)}
-.mention-content{font-size:13px;color:var(--text)}
-.typing-indicator{padding:4px 12px;font-size:11px;color:var(--muted);font-style:italic}
-.group-announcement{padding:8px 12px;background:rgba(0,255,255,.1);border-bottom:1px solid var(--border);font-size:12px;color:var(--accent);cursor:pointer}
-.group-announcement:hover{background:rgba(0,255,255,.15)}
-.search-result-item{padding:8px;border-bottom:1px solid var(--border);cursor:pointer}
-.search-result-item:hover{background:rgba(255,255,255,.05)}
-.search-result-nick{font-size:12px;color:var(--accent);margin-bottom:4px}
-.search-result-content{font-size:13px;color:var(--text);word-break:break-all}
-.msg-image{max-width:100%;max-height:300px;border-radius:8px;cursor:pointer;display:block}
-.msg-file{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;margin-top:4px}
-.msg-file-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center}
-.msg-file-info{flex:1}
-.msg-file-name{font-size:12px;font-weight:500}
-.msg-file-size{font-size:10px;color:var(--muted)}
-.chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);background:var(--bg);flex-shrink:0;align-items:flex-end}
-.chat-input textarea{flex:1;padding:10px 12px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:20px;font-size:14px;outline:none;resize:none;max-height:80px;font-family:inherit;line-height:1.4}
-.chat-input textarea:focus{border-color:var(--accent)}
-.chat-actions{display:flex;gap:4px}
-.chat-action-btn{width:36px;height:36px;background:var(--card);border:1px solid var(--border);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s}
-.chat-action-btn:hover{border-color:var(--accent);color:var(--accent)}
-.send-btn{width:40px;height:40px;background:var(--accent);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.send-btn svg{width:18px;height:18px;fill:#000}
+.msg-input-wrap{display:flex;gap:8px;padding:12px;background:var(--bg);border-top:1px solid var(--border)}
+.msg-input-wrap textarea{flex:1;padding:10px 14px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:20px;font-size:14px;outline:none;resize:none;max-height:80px}
+
+/* === 管理面板 === */
 .admin-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
-.admin-tab{flex:1;min-width:60px;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:12px;cursor:pointer;text-align:center}
-.admin-tab.on{border-color:var(--accent);color:var(--accent)}
+.admin-tab{flex:1;min-width:60px;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;font-size:12px;cursor:pointer;text-align:center}
+.admin-tab.active{border-color:var(--accent);color:var(--accent)}
 .admin-section{display:none}
-.admin-section.on{display:block}
-.admin-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
-.admin-form input{margin:0}
-.item-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin:8px 0}
-.item-card .item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.item-card .item-title{font-size:14px;font-weight:500}
-.item-card .item-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--border);color:var(--muted)}
-.item-card .item-badge.admin{background:rgba(255,170,0,.2);color:var(--warn)}
-.item-card .item-badge.banned{background:rgba(255,68,102,.2);color:var(--error)}
-.item-card .item-badge.active{background:rgba(0,255,136,.2);color:var(--success)}
-.item-card .item-badge.online{background:rgba(0,255,255,.2);color:var(--accent)}
-.item-card .item-badge.muted{background:rgba(255,170,0,.2);color:var(--warn)}
-.item-card .item-info{font-size:11px;color:var(--muted);margin-bottom:8px}
-.item-card .item-actions{display:flex;gap:4px;flex-wrap:wrap}
-.item-card .item-actions button{flex:1;min-width:50px}
-.empty{text-align:center;color:var(--muted);font-size:13px;padding:24px}
+.admin-section.active{display:block}
+
+.item-card{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px}
+.item-header{display:flex;justify-content:space-between;align-items:center}
+.item-title{font-size:14px;font-weight:500}
+.item-info{font-size:11px;color:var(--muted);margin-top:4px}
+
 .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.stat-card{background:linear-gradient(135deg,rgba(0,255,255,.05),rgba(255,0,255,.05));border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;position:relative;overflow:hidden}
-.stat-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
-.stat-value{font-size:24px;font-weight:600;color:var(--accent);margin-bottom:4px}
-.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-.user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;z-index:1000;min-width:180px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.stat-card{background:linear-gradient(135deg,rgba(0,240,255,.05),rgba(255,0,170,.05));border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center}
+.stat-value{font-size:24px;font-weight:600;color:var(--accent)}
+.stat-label{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* === 模态框 === */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:1000;padding:12px}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:16px;font-weight:600}
+.modal-close{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer}
+.modal-body{padding:16px}
+
+/* === 用户菜单 === */
+.user-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;z-index:1001;min-width:180px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
 .user-menu-header{padding:8px;border-bottom:1px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:10px}
-.user-menu-avatar{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#000;overflow:hidden;flex-shrink:0}
-.user-menu-avatar img{width:100%;height:100%;object-fit:cover}
-.user-menu-info h4{font-size:14px;font-weight:500}
-.user-menu-info p{font-size:11px;color:var(--muted)}
-.user-menu-status{font-size:11px;margin-top:2px}
-.user-menu-status.online{color:var(--success)}
-.user-menu-status.offline{color:var(--muted)}
-.user-menu-status.muted{color:var(--warn)}
-.user-menu-item{display:block;width:100%;padding:8px 12px;background:transparent;border:none;color:var(--text);font-size:13px;text-align:left;cursor:pointer;border-radius:6px}
-.user-menu-item:hover{background:var(--border)}
-.user-menu-item.danger{color:var(--error)}
-.user-menu-item.warn{color:var(--warn)}
-.permission-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
-.permission-tag{font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(0,255,255,.1);color:var(--accent);border:1px solid rgba(0,255,255,.2)}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:2000}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;max-width:90%;max-height:90%;overflow:auto}
-.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.modal-header h3{font-size:16px;font-weight:500}
-.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
-.permission-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:300px;overflow-y:auto}
-.permission-item{padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
-.permission-item label{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer}
-.permission-item input{accent-color:var(--accent)}
-.mute-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.mute-option{padding:6px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer}
-.mute-option:hover{border-color:var(--accent)}
-.mute-option.on{border-color:var(--accent);color:var(--accent)}
-.upload-progress{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--accent);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--accent);z-index:1000}
-.loading-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--accent);border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin-right:8px}
-.theme-toggle{position:absolute;top:12px;right:12px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;transition:all .2s}
-.theme-toggle:hover{border-color:var(--accent)}
-@keyframes spin{to{transform:rotate(360deg)}}
-/* 移动端响应式优化 */
-@media(max-width:480px){
-.container{padding:8px}
-.logo{font-size:18px;letter-spacing:4px;padding:20px 0 16px}
-.card{padding:12px;margin:6px 0}
-.chat-header{padding:8px}
-.chat-header h2{font-size:14px}
-.chat-msgs{padding:8px;gap:8px}
-.msg-avatar{width:32px;height:32px;font-size:12px}
-.msg-bubble{padding:8px 10px;max-width:85%}
-.msg-nick{font-size:11px}
-.msg-time{font-size:9px}
-.chat-input{padding:8px}
-.chat-input textarea{font-size:14px}
-.btn{padding:6px 12px;font-size:12px}
-.input{padding:8px 10px;font-size:14px}
-.modal{padding:12px;max-width:95%;max-height:85%}
-.modal-header h3{font-size:14px}
-.channel-card{padding:10px;margin:6px 0}
-.channel-card h3{font-size:14px}
-.status{font-size:9px;padding:3px 8px}
-.admin-tabs{flex-wrap:wrap}
-.admin-tab{padding:6px 10px;font-size:11px}
-}
-/* 平板适配 */
-@media(min-width:481px) and (max-width:768px){
-.container{max-width:600px}
-.chat-wrap{max-width:600px;margin:0 auto}
-}
-/* 桌面端优化 */
-@media(min-width:769px){
-.container{max-width:800px}
-.chat-wrap{max-width:800px;margin:0 auto}
-.msg-avatar{width:40px;height:40px}
-.msg-bubble{max-width:70%}
-}
-/* 触摸设备优化 */
-@media(hover:none) and (pointer:coarse){
-.btn:active{transform:scale(.97)}
-.channel-card:active{transform:scale(.98)}
-.msg-avatar:active{transform:scale(.95)}
-}
-/* 安全区域适配（刘海屏） */
-@supports(padding:env(safe-area-inset-top)){
-body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
-.chat-input{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
-}
+.user-menu-item{display:block;width:100%;padding:8px 12px;background:none;border:none;color:var(--text);text-align:left;cursor:pointer;border-radius:4px}
+.user-menu-item:hover{background:var(--bg2)}
+
+/* === 徽章 === */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:500}
+.badge.accent{background:rgba(0,240,255,.2);color:var(--accent)}
+.badge.warn{background:rgba(255,170,0,.2);color:var(--warn)}
+.badge.error{background:rgba(255,51,102,.2);color:var(--error)}
+.badge.success{background:rgba(0,255,136,.2);color:var(--success)}
+
+/* === 响应式 === */
+@media(max-width:480px){.container{padding:8px}.login-logo{font-size:24px;margin:40px 0 30px}}
 </style>
 </head>
-<body class="scanlines">
-<div class="status" id="status">离线</div>
+<body class="scanline" x-data="app()" x-init="init()">
+<div class="container">
 
-<div id="loginPage" class="container">
-<div class="logo glitch"><span id="logoText"></span></div>
-<button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+<!-- 登录页 -->
+<div x-show="!loggedIn" x-cloak>
+<div class="login-logo cyber-text">ARCANUM</div>
 <div class="card">
-<input class="input" id="loginUid" placeholder="UID" autocapitalize="characters" style="margin-bottom:8px">
-<input class="input" type="password" id="loginPwd" placeholder="密码" style="margin-bottom:8px">
-<button class="btn full" id="loginBtn">进入</button>
-<div class="err" id="loginErr"></div>
+<form class="login-form" @submit.prevent="login()">
+<input class="input" placeholder="UID" x-model="loginForm.uid" autocapitalize="characters">
+<input class="input" type="password" placeholder="密码" x-model="loginForm.pwd" @keydown.enter="login()">
+<div class="err" x-show="loginError" x-text="loginError"></div>
+<button class="btn full cyber-glow" type="submit" :disabled="loginLoading">
+<template x-if="!loginLoading">进入</template>
+<template x-if="loginLoading">登录中...</template>
+</button>
+</form>
 </div>
 </div>
 
-<div id="mainPage" class="container hidden">
-<div class="logo glitch"><span id="logoText2"></span></div>
-
-<div id="channelView">
-<div class="card">
-<input class="input" id="cipherInput" placeholder="输入频道名进入..." autocapitalize="off">
-<button class="btn full" id="enterChannelBtn" style="margin-top:8px">进入频道</button>
-<div class="err" id="cipherErr"></div>
+<!-- 主页 -->
+<div x-show="loggedIn" x-cloak>
+<!-- 头部 -->
+<div class="header">
+<div>
+<h1 class="cyber-text" x-text="user?.nickname || 'ARCANUM'"></h1>
+<div style="font-size:11px;color:var(--muted)" x-text="user?.uid"></div>
 </div>
-<div id="myChannels"></div>
-<div class="card hidden" id="adminEntry"><button class="btn full" id="showAdminBtn">管理面板</button></div>
-<div style="margin-top:12px">
-<button class="btn full" id="conversationsBtn" style="position:relative">💬 私聊<span class="mention-badge hidden" id="dmBadge">0</span></button>
+<div class="header-actions">
+<button class="btn sm" @click="toggleTheme()" x-text="theme === 'dark' ? '☀' : '🌙'"></button>
+<button class="btn sm" @click="showAdmin = true" x-show="isAdmin">⚙</button>
+<button class="btn sm danger" @click="logout()">退出</button>
 </div>
-<div style="margin-top:8px">
-<button class="btn full" id="friendsBtn" style="position:relative">👥 好友<span class="mention-badge hidden" id="friendBadge">0</span></button>
-</div>
-<div style="margin-top:8px">
-<button class="btn full" id="mentionsBtn" style="position:relative">🔔 提及<span class="mention-badge hidden" id="mentionBadge">0</span></button>
-</div>
-<div style="margin-top:8px"><button class="btn full" id="settingsBtn">⚙ 个人设置</button></div>
-<div style="margin-top:8px"><button class="btn full danger" id="logoutBtn">退出登录</button></div>
 </div>
 
-<div id="chatView" class="hidden">
-<div class="chat-wrap">
+<!-- 频道列表 -->
+<div x-show="!currentGroup">
+<div class="sidebar">
+<input class="input" placeholder="输入频道名进入或创建" x-model="channelInput" @keydown.enter="enterChannel()">
+<button class="btn full" @click="enterChannel()">进入频道</button>
+</div>
+<div class="channel-list">
+<template x-for="g in groups" :key="g.id">
+<div class="channel-card" @click="joinGroup(g.id)">
+<h3 x-text="g.name"></h3>
+<p x-text="'成员: ' + g.memberCount"></p>
+</div>
+</template>
+</div>
+</div>
+
+<!-- 聊天界面 -->
+<div x-show="currentGroup" class="card" style="display:flex;flex-direction:column;height:calc(100vh - 100px)">
 <div class="chat-header">
-<button class="chat-back" id="leaveChatBtn">←</button>
-<h2 id="chatTitle">聊天</h2>
-<div class="chat-header-actions">
-<button class="chat-action-btn" id="membersBtn" title="成员">👥</button>
-<button class="chat-action-btn" id="searchBtn" title="搜索">🔍</button>
-<button class="chat-action-btn" id="groupInfoBtn" title="频道信息">ℹ</button>
+<div>
+<h3 x-text="currentGroup?.name"></h3>
+<div style="font-size:11px;color:var(--muted)" x-text="'成员: ' + (currentGroup?.memberCount || 0)"></div>
+</div>
+<div>
+<button class="btn sm" @click="showGroupInfo = true">ℹ</button>
+<button class="btn sm" @click="leaveGroup()">←</button>
 </div>
 </div>
-<div class="group-announcement hidden" id="groupAnnouncement"></div>
-<div class="chat-msgs" id="msgs"></div>
-<div class="typing-indicator hidden" id="typingIndicator"></div>
-<div class="reply-preview hidden" id="replyPreview"><span></span><button onclick="cancelReply()">✕</button></div>
-<div class="chat-input">
-<textarea id="msgInput" rows="1" placeholder="消息..."></textarea>
-<div class="chat-actions">
-<label class="chat-action-btn" title="上传图片">
-<input type="file" accept="image/*" id="imageInput" style="display:none">
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-</label>
-<label class="chat-action-btn" title="上传文件">
-<input type="file" accept=".txt" id="fileInput" style="display:none">
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3-3 3 3"/></svg>
-</label>
+<div class="chat-msgs" id="msgs" @scroll="onScroll($event)">
+<template x-for="m in messages" :key="m.id">
+<div class="msg-row" :class="{me: m.senderId === user?.id}">
+<div class="msg-avatar" @click="showUserMenu($event, m.senderId, m.senderNickname)">
+<template x-if="m.senderAvatar">
+<img :src="m.senderAvatar">
+</template>
+<template x-if="!m.senderAvatar" x-text="m.senderNickname?.charAt(0)"></template>
 </div>
-<button class="send-btn" id="sendBtn"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
+<div class="msg-bubble" :class="m.senderId === user?.id ? 'out' : 'in'">
+<div class="msg-nick" x-text="m.senderNickname"></div>
+<div x-html="renderMessage(m)"></div>
+<div class="msg-time" x-text="formatTime(m.createdAt)"></div>
+</div>
+</div>
+</template>
+</div>
+<div class="msg-input-wrap">
+<textarea placeholder="消息..." x-model="msgInput" @keydown.enter.prevent="sendMessage()" rows="1"></textarea>
+<button class="btn" @click="sendMessage()">→</button>
+</div>
 </div>
 </div>
 </div>
 
-<div id="adminView" class="hidden">
+<!-- 管理面板 -->
+<div class="modal-overlay" x-show="showAdmin" x-cloak @click.self="showAdmin = false">
+<div class="modal" style="max-width:540px">
+<div class="modal-header">
+<h3>管理面板</h3>
+<button class="modal-close" @click="showAdmin = false">×</button>
+</div>
+<div class="modal-body">
 <div class="admin-tabs">
-<div class="admin-tab on" data-tab="users">用户</div>
-<div class="admin-tab" data-tab="groups">频道</div>
-<div class="admin-tab" data-tab="ips">IP</div>
-<div class="admin-tab" data-tab="words">敏感词</div>
-<div class="admin-tab" data-tab="logs">日志</div>
-<div class="admin-tab" data-tab="stats">统计</div>
+<button class="admin-tab" :class="{active: adminTab === 'users'}" @click="adminTab = 'users'">用户</button>
+<button class="admin-tab" :class="{active: adminTab === 'groups'}" @click="adminTab = 'groups'">频道</button>
+<button class="admin-tab" :class="{active: adminTab === 'words'}" @click="adminTab = 'words'">敏感词</button>
+<button class="admin-tab" :class="{active: adminTab === 'stats'}" @click="adminTab = 'stats'">统计</button>
 </div>
 
-<div id="usersSection" class="admin-section on">
-<div class="card" id="createUserCard">
-<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">创建用户</h3>
-<div class="admin-form">
-<input class="input" id="newUid" placeholder="UID (留空自动生成)" autocapitalize="characters">
-<input class="input" id="newNick" placeholder="昵称">
-<input class="input" id="newPwd" placeholder="密码 (6位+)">
-<button class="btn full" id="createUserBtn">创建</button>
-</div>
-<div id="userRes"></div>
-</div>
-<div id="userList"></div>
-</div>
-
-<div id="groupsSection" class="admin-section">
-<div class="card" id="createGroupCard">
-<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">创建频道</h3>
-<div class="admin-form">
-<input class="input" id="newChan" placeholder="频道名 (即暗号)">
-<button class="btn full" id="createChannelBtn">创建</button>
-</div>
-<div id="chanRes"></div>
-</div>
-<div id="groupList"></div>
-</div>
-
-<div id="ipsSection" class="admin-section">
+<!-- 用户管理 -->
+<div class="admin-section" :class="{active: adminTab === 'users'}">
 <div class="card">
-<h3 style="font-size:13px;color:var(--warn);margin-bottom:10px">IP封禁列表</h3>
-<div id="ipList"></div>
+<h4 style="margin-bottom:12px">创建用户</h4>
+<input class="input" placeholder="UID" x-model="newUser.uid" style="margin-bottom:8px">
+<input class="input" placeholder="昵称" x-model="newUser.nickname" style="margin-bottom:8px">
+<input class="input" type="password" placeholder="密码" x-model="newUser.password" style="margin-bottom:8px">
+<button class="btn full" @click="createUser()">创建</button>
 </div>
+<template x-for="u in users" :key="u.id">
+<div class="item-card">
+<div class="item-header">
+<span class="item-title" x-text="u.nickname"></span>
+<span class="badge" :class="u.online ? 'success' : ''" x-text="u.online ? '在线' : '离线'"></span>
+</div>
+<div class="item-info" x-text="u.uid"></div>
+<div style="display:flex;gap:4px;margin-top:8px">
+<button class="btn sm" @click="banUser(u.uid)" x-show="u.status !== 'banned'">封禁</button>
+<button class="btn sm" @click="unbanUser(u.uid)" x-show="u.status === 'banned'">解封</button>
+<button class="btn sm warn" @click="muteUser(u.uid)">禁言</button>
+</div>
+</div>
+</template>
 </div>
 
-<div id="wordsSection" class="admin-section">
+<!-- 频道管理 -->
+<div class="admin-section" :class="{active: adminTab === 'groups'}">
+<template x-for="g in allGroups" :key="g.id">
+<div class="item-card">
+<div class="item-header">
+<span class="item-title" x-text="g.name"></span>
+<span class="badge accent" x-text="'成员: ' + g.memberCount"></span>
+</div>
+<div class="item-info" x-text="g.id"></div>
+<div style="margin-top:8px">
+<button class="btn sm danger" @click="deleteGroup(g.id)">删除</button>
+</div>
+</div>
+</template>
+</div>
+
+<!-- 敏感词管理 -->
+<div class="admin-section" :class="{active: adminTab === 'words'}">
 <div class="card">
-<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">敏感词管理</h3>
-<div class="admin-form">
-<input class="input" id="newWord" placeholder="敏感词">
-<input class="input" id="wordReplacement" placeholder="替换为 (默认***)">
-<button class="btn full" id="addWordBtn">添加</button>
+<h4 style="margin-bottom:12px">添加敏感词</h4>
+<input class="input" placeholder="敏感词" x-model="newWord.word" style="margin-bottom:8px">
+<input class="input" placeholder="替换为" x-model="newWord.replacement" style="margin-bottom:8px">
+<button class="btn full" @click="addWord()">添加</button>
 </div>
-<div id="wordList" style="margin-top:12px"></div>
+<template x-for="w in sensitiveWords" :key="w.id">
+<div class="item-card">
+<div class="item-header">
+<span class="item-title" x-text="w.word"></span>
+<button class="btn sm danger" @click="deleteWord(w.id)">删除</button>
+</div>
+<div class="item-info" x-text="'替换为: ' + w.replacement"></div>
+</div>
+</template>
+</div>
+
+<!-- 统计 -->
+<div class="admin-section" :class="{active: adminTab === 'stats'}">
+<div class="stats-grid">
+<div class="stat-card">
+<div class="stat-value" x-text="stats.users?.total || 0"></div>
+<div class="stat-label">用户总数</div>
+</div>
+<div class="stat-card">
+<div class="stat-value" x-text="stats.users?.online || 0"></div>
+<div class="stat-label">在线用户</div>
+</div>
+<div class="stat-card">
+<div class="stat-value" x-text="stats.groups?.total || 0"></div>
+<div class="stat-label">频道总数</div>
+</div>
+<div class="stat-card">
+<div class="stat-value" x-text="stats.messages?.total || 0"></div>
+<div class="stat-label">消息总数</div>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 
-<div id="logsSection" class="admin-section">
-<div class="card">
-<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">操作日志</h3>
-<div id="logList" style="max-height:400px;overflow-y:auto"></div>
-</div>
-</div>
-
-<div id="statsSection" class="admin-section">
-<div class="card">
-<h3 style="font-size:13px;color:var(--accent);margin-bottom:10px">系统统计</h3>
-<div id="statsContent"></div>
-</div>
-</div>
-
-<button class="btn full" id="showChannelBtn" style="margin-top:12px">返回频道</button>
-</div>
-</div>
-
-<div class="user-menu hidden" id="userMenu">
+<!-- 用户菜单 -->
+<div class="user-menu" x-show="userMenu.show" x-cloak :style="{left: userMenu.x + 'px', top: userMenu.y + 'px'}" @click.away="userMenu.show = false">
 <div class="user-menu-header">
-<div class="user-menu-avatar" id="menuAvatar">U</div>
-<div class="user-menu-info">
-<h4 id="menuUserName">用户名</h4>
-<p id="menuUserInfo">UID: xxx</p>
-<p class="user-menu-status" id="menuUserStatus">在线</p>
+<div class="msg-avatar" x-text="userMenu.nickname?.charAt(0)"></div>
+<div>
+<div style="font-weight:500" x-text="userMenu.nickname"></div>
+<div style="font-size:11px;color:var(--muted)" x-text="userMenu.uid"></div>
 </div>
 </div>
-<div id="menuActions"></div>
-<button class="user-menu-item" id="closeUserMenuBtn">关闭</button>
+<button class="user-menu-item" @click="addFriend(userMenu.userId)">添加好友</button>
+<button class="user-menu-item" @click="openDirectChat(userMenu.userId, userMenu.nickname)">私聊</button>
+<template x-if="isAdmin">
+<div>
+<button class="user-menu-item" @click="muteUser(userMenu.uid)">禁言</button>
+<button class="user-menu-item" style="color:var(--error)" @click="banUser(userMenu.uid)">封禁</button>
 </div>
-
-<div class="modal-overlay hidden" id="permModal">
-<div class="modal">
-<div class="modal-header">
-<h3>管理用户权限</h3>
-<button class="modal-close" id="closePermModalBtn">×</button>
-</div>
-<p style="font-size:12px;color:var(--muted);margin-bottom:8px">用户: <span id="permUserName" style="color:var(--accent)"></span></p>
-<p style="font-size:11px;color:var(--muted);margin-bottom:12px">提示: 勾选权限后点击保存即可授权，取消勾选可撤销权限</p>
-<div class="permission-grid" id="permGrid"></div>
-<button class="btn full success" style="margin-top:12px" id="savePermsBtn">保存权限</button>
-</div>
+</template>
 </div>
 
-<div class="modal-overlay hidden" id="muteModal">
-<div class="modal">
-<div class="modal-header">
-<h3>禁言用户</h3>
-<button class="modal-close" id="closeMuteModalBtn">×</button>
-</div>
-<p style="font-size:12px;color:var(--muted);margin-bottom:12px">用户: <span id="muteUserName" style="color:var(--accent)"></span></p>
-<div class="mute-options" id="muteOptions"></div>
-<button class="btn full warn" style="margin-top:12px" id="confirmMuteBtn">确认禁言</button>
-</div>
 </div>
 
-<div class="modal-overlay hidden" id="groupInfoModal">
-<div class="modal">
-<div class="modal-header">
-<h3>频道信息</h3>
-<button class="modal-close" id="closeGroupInfoModalBtn">×</button>
-</div>
-<div id="groupInfoContent"></div>
-</div>
-</div>
-
-<div class="modal-overlay hidden" id="searchModal">
-<div class="modal">
-<div class="modal-header">
-<h3>搜索消息</h3>
-<button class="modal-close" id="closeSearchModalBtn">×</button>
-</div>
-<div style="padding:8px">
-<input class="input" id="searchInput" placeholder="输入关键词搜索...">
-<div id="searchResults" style="margin-top:12px;max-height:300px;overflow-y:auto"></div>
-</div>
-</div>
-</div>
-
-<div class="modal-overlay hidden" id="membersModal">
-<div class="modal">
-<div class="modal-header">
-<h3>频道成员</h3>
-<button class="modal-close" id="closeMembersModalBtn">×</button>
-</div>
-<div id="membersList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
-</div>
-</div>
-
-<div class="modal-overlay hidden" id="settingsModal">
-<div class="modal">
-<div class="modal-header">
-<h3>个人设置</h3>
-<button class="modal-close" id="closeSettingsModalBtn">×</button>
-</div>
-<div style="padding:8px">
-<div class="settings-section">
-<h4 style="font-size:13px;color:var(--accent);margin-bottom:8px">修改昵称</h4>
-<input class="input" id="newNickname" placeholder="新昵称">
-<button class="btn full" style="margin-top:8px" id="updateNicknameBtn">保存昵称</button>
-</div>
-<div class="settings-section" style="margin-top:16px">
-<h4 style="font-size:13px;color:var(--accent);margin-bottom:8px">修改密码</h4>
-<input class="input" type="password" id="oldPassword" placeholder="当前密码" style="margin-bottom:8px">
-<input class="input" type="password" id="newPassword" placeholder="新密码（至少6位）">
-<button class="btn full warn" style="margin-top:8px" id="changePasswordBtn">修改密码</button>
-</div>
-<div class="settings-section" style="margin-top:16px">
-<h4 style="font-size:13px;color:var(--accent);margin-bottom:8px">修改头像</h4>
-<label class="btn full" style="display:block;text-align:center">
-上传头像
-<input type="file" accept="image/*" id="avatarInput" style="display:none">
-</label>
-</div>
-</div>
-</div>
-</div>
-
-<div class="modal-overlay hidden" id="mentionsModal">
-<div class="modal">
-<div class="modal-header">
-<h3>提及我的消息</h3>
-<button class="modal-close" id="closeMentionsModalBtn">×</button>
-</div>
-<div id="mentionsList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
-</div>
-</div>
-
-<div class="modal-overlay hidden" id="forwardModal">
-<div class="modal">
-<div class="modal-header">
-<h3>转发到频道</h3>
-<button class="modal-close" id="closeForwardModalBtn">×</button>
-</div>
-<div id="forwardList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
-</div>
-</div>
-
-<div class="modal-overlay hidden" id="conversationsModal">
-<div class="modal">
-<div class="modal-header">
-<h3>私聊</h3>
-<button class="modal-close" id="closeConversationsModalBtn">×</button>
-</div>
-<div id="conversationsList" style="padding:8px;max-height:400px;overflow-y:auto"></div>
-</div>
-</div>
-
-<div class="modal-overlay hidden" id="friendsModal">
-<div class="modal">
-<div class="modal-header">
-<h3>好友</h3>
-<button class="modal-close" id="closeFriendsModalBtn">×</button>
-</div>
-<div style="padding:8px">
-<div class="admin-tabs" style="margin-bottom:8px">
-<button class="admin-tab on" data-tab="friendsList">好友列表</button>
-<button class="admin-tab" data-tab="friendRequests">好友请求</button>
-</div>
-<div id="friendsList"></div>
-<div id="friendRequests" class="hidden"></div>
-</div>
-</div>
-</div>
-
-<div class="modal-overlay hidden" id="directChatModal">
-<div class="modal" style="max-width:400px;height:80vh;display:flex;flex-direction:column">
-<div class="modal-header">
-<h3 id="directChatTitle">私聊</h3>
-<button class="modal-close" id="closeDirectChatModalBtn">×</button>
-</div>
-<div id="directMsgs" style="flex:1;overflow-y:auto;padding:8px;background:#050505"></div>
-<div style="padding:8px;border-top:1px solid var(--border)">
-<textarea id="directInput" rows="1" placeholder="消息..." style="width:100%;padding:8px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;resize:none"></textarea>
-</div>
-</div>
-</div>
-
-<div class="upload-progress hidden" id="uploadProgress"><span class="loading-spinner"></span>上传中...</div>
-
+<!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
-(function(){
-let token="",user=null,ws=null,groupId=null,lastSend=0;
-let menuTargetUser=null;
-let selectedMuteDuration=30;
-let allPermissions=[];
-let userPermissions={};
-let onlineUsers=new Set();
-let displayedMsgIds=new Set();
-const API=location.origin;
-
-let wsReconnectAttempts=0;
-let wsMaxReconnectAttempts=10;
-let wsReconnectDelay=1000;
-let wsHeartbeatInterval=null;
-let wsLastPong=0;
-
-// 主题切换
-function initTheme(){
-const saved=localStorage.getItem("theme");
-if(saved==="light"){
-document.documentElement.setAttribute("data-theme","light");
-$("themeToggle").textContent="☀";
-}
-}
-
-function toggleTheme(){
-const current=document.documentElement.getAttribute("data-theme");
-if(current==="light"){
-document.documentElement.removeAttribute("data-theme");
-localStorage.setItem("theme","dark");
-$("themeToggle").textContent="🌙";
-}else{
-document.documentElement.setAttribute("data-theme","light");
-localStorage.setItem("theme","light");
-$("themeToggle").textContent="☀";
-}
-}
-
-function $(id){return document.getElementById(id)}
-
-function esc(t){const d=document.createElement("div");d.textContent=t;return d.innerHTML}
-function formatTime(t){return new Date(t).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}
-function formatFileSize(b){if(b<1024)return b+"B";if(b<1024*1024)return(b/1024).toFixed(1)+"KB";return(b/1024/1024).toFixed(1)+"MB"}
-
-function typeWriter(el,text,i){if(i<text.length){el.textContent=text.substring(0,i+1);setTimeout(()=>typeWriter(el,text,i+1),100)}}
-
-async function api(path,opts={}){const r=await fetch(API+path,{...opts,headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json",...opts.headers}});const d=await r.json();if(d.error&&(d.error.includes("封禁")||d.error.includes("踢出")||d.error.includes("未登录"))){localStorage.clear();location.reload()}return d}
-
-async function login(){
-const uid=$("loginUid").value.trim().toUpperCase();
-const pwd=$("loginPwd").value;
-const errEl=$("loginErr");
-const btn=$("loginBtn");
-if(!uid){errEl.textContent="请输入UID";return}
-if(!pwd){errEl.textContent="请输入密码";return}
-btn.disabled=true;
-btn.textContent="登录中...";
-errEl.textContent="";
-try{
-const r=await fetch(API+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({uid,password:pwd})});
-const d=await r.json();
-if(d.success){token=d.data.token;user=d.data.user;localStorage.setItem("t",token);localStorage.setItem("u",JSON.stringify(user));showMain()}
-else errEl.textContent=d.error||"登录失败";
-}catch(e){errEl.textContent="网络错误: "+e.message}
-finally{btn.disabled=false;btn.textContent="进入"}
-}
-
-function showMain(){
-$("loginPage").classList.add("hidden");
-$("mainPage").classList.remove("hidden");
-if(user.role==="admin"||(user.permissions&&user.permissions.length>0))$("adminEntry").classList.remove("hidden");
-connectWebSocket();
-loadMyChannels();
-loadMentions();
-// 请求通知权限
-if("Notification"in window&&Notification.permission==="default"){
-Notification.requestPermission();
-}
-}
-
-async function loadMyChannels(){
-try{
-const d=await api("/api/groups");
-const el=$("myChannels");
-if(d.success)el.innerHTML=d.data.length?d.data.map(g=>'<div class="channel-card" data-gid="'+g.id+'"><h3>'+esc(g.name)+'</h3><p>点击进入</p></div>').join(""):'<div class="empty">暂无频道，输入频道名进入</div>';
-}catch(e){}
-}
-
-function showChat(){$("channelView").classList.add("hidden");$("chatView").classList.remove("hidden");$("adminView").classList.add("hidden");displayedMsgIds.clear();loadMsgs()}
-function leaveChat(){groupId=null;$("channelView").classList.remove("hidden");$("chatView").classList.add("hidden");loadMyChannels()}
-
-async function enterChannel(){
-const name=$("cipherInput").value.trim();
-if(!name){$("cipherErr").textContent="请输入频道名";return}
-try{
-const d=await api("/api/groups/enter",{method:"POST",body:JSON.stringify({name})});
-if(d.success){
-groupId=d.data.id;
-$("cipherErr").textContent="";
-$("cipherInput").value="";
-$("chatTitle").textContent=name;
-// 显示公告
-if(d.data.announcement){
-$("groupAnnouncement").textContent="📢 "+d.data.announcement;
-$("groupAnnouncement").classList.remove("hidden");
-}else{
-$("groupAnnouncement").classList.add("hidden");
-}
-showChat();
-}
-else $("cipherErr").textContent=d.error||"频道不存在";
-}catch(e){$("cipherErr").textContent="网络错误"}
-}
-
-let oldestCreatedAt=null;
-let isLoadingMore=false;
-
-async function loadMsgs(){
-if(!groupId)return;
-try{
-const d=await api("/api/messages/group/"+groupId);
-if(d.success){
-const el=$("msgs");
-el.innerHTML="";
-displayedMsgIds.clear();
-d.data.forEach(m=>addMessage(m,false));
-el.scrollTop=el.scrollHeight;
-// 保存最旧消息时间用于分页
-if(d.pagination&&d.pagination.oldestCreatedAt){
-oldestCreatedAt=d.pagination.oldestCreatedAt;
-}
-// 标记所有消息已读
-api("/api/messages/group/"+groupId+"/read",{method:"POST"});
-}
-}catch(e){}
-}
-
-async function loadMoreMsgs(){
-if(!groupId||isLoadingMore||!oldestCreatedAt)return;
-isLoadingMore=true;
-try{
-const d=await api("/api/messages/group/"+groupId+"?before="+encodeURIComponent(oldestCreatedAt));
-if(d.success&&d.data.length>0){
-const el=$("msgs");
-const oldScrollHeight=el.scrollHeight;
-// 在顶部插入旧消息
-d.data.reverse().forEach(m=>{
-if(!displayedMsgIds.has(m.id)){
-displayedMsgIds.add(m.id);
-el.innerHTML=renderMessage(m)+el.innerHTML;
-}
-});
-// 保持滚动位置
-el.scrollTop=el.scrollHeight-oldScrollHeight;
-// 更新最旧消息时间
-if(d.pagination&&d.pagination.oldestCreatedAt){
-oldestCreatedAt=d.pagination.oldestCreatedAt;
-}
-}
-}catch(e){}
-isLoadingMore=false;
-}
-
-function addMessage(m,scroll=true){
-if(displayedMsgIds.has(m.id))return;
-displayedMsgIds.add(m.id);
-const el=$("msgs");
-el.innerHTML+=renderMessage(m);
-if(scroll)el.scrollTop=el.scrollHeight;
-}
-
-// 高亮@提及
-function highlightMentions(text){
-return text.replace(/@([\u4e00-\u9fa5\w]+)/g,'<span class="mention">@$1</span>');
-}
-
-function renderMessage(m){
-const isMe=m.senderId===user.id;
-const isOnline=onlineUsers.has(m.senderId);
-const avatarHtml=m.senderAvatar?'<img src="'+m.senderAvatar+'" alt="">':m.senderNickname.charAt(0).toUpperCase();
-const onlineDot='<span class="online-dot '+(isOnline?"on":"off")+'"></span>';
-let contentHtml="";
-if(m.msgType==="image")contentHtml='<img class="msg-image" src="'+m.content+'" onclick="window.open(\''+m.content+'\',\'_blank\')" loading="lazy">';
-else if(m.msgType==="file"){const size=formatFileSize(m.fileSize);contentHtml='<div class="msg-file"><div class="msg-file-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div class="msg-file-info"><div class="msg-file-name">'+esc(m.fileName||"文件")+'</div><div class="msg-file-size">'+size+'</div></div></div>';}
-else contentHtml=highlightMentions(esc(m.content));
-// 引用消息
-let replyHtml="";
-if(m.replyTo&&m.replyInfo){
-replyHtml='<div class="msg-reply" onclick="scrollToMsg(\''+m.replyTo+'\')"><span class="msg-reply-nick">'+esc(m.replyInfo.senderNickname)+'</span><span class="msg-reply-content">'+esc(m.replyInfo.content.substring(0,50))+(m.replyInfo.content.length>50?"...":"")+'</span></div>';
-}
-// 置顶标记
-const pinnedHtml=m.pinned?'<span class="pinned-badge">📌 置顶</span>':"";
-// 置顶按钮（管理员或频道所有者）
-const canPin=user.role==="admin"||(user.id===m.groupOwnerId);
-const pinBtn=canPin?'<button class="pin-btn" onclick="togglePin(\''+m.id+'\')">'+(m.pinned?"取消置顶":"置顶")+'</button>':"";
-// 转发按钮
-const forwardBtn='<button class="forward-btn" onclick="showForwardModal(\''+m.id+'\')">↗</button>';
-// 添加双击撤回功能（仅限自己发送的消息）
-const recallAttr=isMe?' ondblclick="recallMessage(\''+m.id+'\')" title="双击撤回"':"";
-return'<div class="msg-row'+(isMe?" me":"")+(m.pinned?" pinned":"")+'" data-mid="'+m.id+'"><div class="msg-avatar" data-sid="'+m.senderId+'" data-nick="'+esc(m.senderNickname)+'">'+avatarHtml+onlineDot+'</div><div class="msg-bubble '+(isMe?"out":"in")+'"'+recallAttr+'><div class="msg-nick">'+esc(m.senderNickname)+pinnedHtml+'</div>'+replyHtml+contentHtml+'<div class="msg-time">'+formatTime(m.createdAt)+'<button class="reply-btn" onclick="setReply(\''+m.id+'\',\''+esc(m.senderNickname)+'\',\''+esc(m.content.substring(0,30))+'\')">↩</button>'+forwardBtn+pinBtn+'</div></div></div>';
-}
-
-async function togglePin(msgId){
-try{
-const d=await api("/api/messages/"+msgId+"/pin",{method:"POST"});
-if(d.success){
-// 更新UI
-const msgEl=document.querySelector('[data-mid="'+msgId+'"]');
-if(msgEl){
-if(d.data.pinned){
-msgEl.classList.add("pinned");
-}else{
-msgEl.classList.remove("pinned");
-}
-}
-}else{alert(d.error||"操作失败")}
-}catch(e){alert("操作失败")}
-}
-
-// 转发功能
-let forwardMsgId=null;
-
-async function showForwardModal(msgId){
-forwardMsgId=msgId;
-try{
-const d=await api("/api/groups");
-if(d.success){
-const el=$("forwardList");
-// 过滤掉当前频道
-const groups=d.data.filter(g=>g.id!==groupId);
-if(groups.length===0){
-el.innerHTML='<div class="empty">没有可转发的频道</div>';
-}else{
-el.innerHTML=groups.map(g=>{
-const members=g.memberCount||0;
-return'<div class="forward-item" data-gid="'+g.id+'">'+
-'<div class="forward-item-name">'+esc(g.name)+'</div>'+
-'<div class="forward-item-members">'+members+' 成员</div>'+
-'</div>';
-}).join("");
-}
-$("forwardModal").classList.remove("hidden");
-}
-}catch(e){}
-}
-
-async function forwardMessage(targetGroupId){
-if(!forwardMsgId)return;
-try{
-const d=await api("/api/messages/"+forwardMsgId+"/forward",{method:"POST",body:JSON.stringify({target_group_id:targetGroupId})});
-if(d.success){
-$("forwardModal").classList.add("hidden");
-alert("转发成功");
-}else{alert(d.error||"转发失败")}
-}catch(e){alert("转发失败")}
-}
-
-let replyTo=null;
-let replyNick=null;
-
-function setReply(msgId,nick,content){
-replyTo=msgId;
-replyNick=nick;
-$("replyPreview").innerHTML='回复 <b>'+esc(nick)+'</b>: '+esc(content.substring(0,30))+(content.length>30?"...":"");
-$("replyPreview").classList.remove("hidden");
-$("msgInput").focus();
-}
-
-function cancelReply(){
-replyTo=null;
-replyNick=null;
-$("replyPreview").classList.add("hidden");
-}
-
-function scrollToMsg(msgId){
-const el=$("msgs");
-const msgEl=el.querySelector('[data-mid="'+msgId+'"]');
-if(msgEl){
-msgEl.scrollIntoView({behavior:"smooth",block:"center"});
-msgEl.classList.add("msg-highlight");
-setTimeout(()=>msgEl.classList.remove("msg-highlight"),2000);
-}
-}
-
-async function recallMessage(msgId){
-if(!confirm("确定撤回这条消息？"))return;
-try{
-const d=await api("/api/messages/"+msgId+"/recall",{method:"POST"});
-if(d.success){
-const el=$("msgs");
-const msgEl=el.querySelector('[data-mid="'+msgId+'"]');
-if(msgEl)msgEl.remove();
-displayedMsgIds.delete(msgId);
-}else{alert(d.error||"撤回失败")}
-}catch(e){alert("撤回失败")}
-}
-
-function send(){
-const now=Date.now();if(now-lastSend<300)return;lastSend=now;
-const input=$("msgInput");const content=input.value.trim();
-if(!content||!ws)return;
-if(content.length>5000){alert("消息太长");return}
-ws.send(JSON.stringify({event:"message",data:{group_id:groupId,content,reply_to:replyTo}}));
-input.value="";input.style.height="auto";
-clearTyping();
-cancelReply();
-}
-
-// 输入状态
-let typingTimeout=null;
-let isTyping=false;
-
-function sendTyping(){
-if(!ws||isTyping)return;
-isTyping=true;
-ws.send(JSON.stringify({event:"typing",data:{group_id:groupId}}));
-typingTimeout=setTimeout(()=>{isTyping=false;},3000);
-}
-
-function clearTyping(){
-if(typingTimeout){clearTimeout(typingTimeout);typingTimeout=null;}
-isTyping=false;
-}
-
-// 显示输入状态
-let typingUsers=new Map();
-let typingHideTimeout=null;
-
-function showTyping(nickname){
-const el=$("typingIndicator");
-if(!el)return;
-typingUsers.set(nickname,Date.now());
-updateTypingDisplay();
-}
-
-function updateTypingDisplay(){
-const el=$("typingIndicator");
-if(!el)return;
-// 清理超过3秒的用户
-const now=Date.now();
-typingUsers=new Map([...typingUsers].filter(([_,t])=>now-t<3000));
-if(typingUsers.size===0){
-el.textContent="";
-el.classList.add("hidden");
-}else if(typingUsers.size===1){
-el.textContent=[...typingUsers.keys()][0]+" 正在输入...";
-el.classList.remove("hidden");
-}else{
-el.textContent=[...typingUsers.keys()].slice(0,3).join(", ")+" 正在输入...";
-el.classList.remove("hidden");
-}
-}
-
-function showUploadProgress(){$("uploadProgress").classList.remove("hidden")}
-function hideUploadProgress(){$("uploadProgress").classList.add("hidden")}
-
-async function uploadImage(e){
-const file=e.target.files[0];if(!file)return;
-if(file.size>5*1024*1024){alert("文件太大（最大5MB）");return}
-showUploadProgress();
-const formData=new FormData();
-formData.append("file",file);
-try{
-const r=await fetch(API+"/api/messages/file/"+groupId,{method:"POST",headers:{"Authorization":"Bearer "+token},body:formData});
-const d=await r.json();
-if(d.success)addMessage(d.data);
-else alert(d.error||"上传失败");
-}catch(err){alert("上传失败")}
-finally{hideUploadProgress()}
-e.target.value="";
-}
-
-async function uploadFile(e){
-const file=e.target.files[0];if(!file)return;
-if(file.size>5*1024*1024){alert("文件太大（最大5MB）");return}
-showUploadProgress();
-const formData=new FormData();
-formData.append("file",file);
-try{
-const r=await fetch(API+"/api/messages/file/"+groupId,{method:"POST",headers:{"Authorization":"Bearer "+token},body:formData});
-const d=await r.json();
-if(d.success)addMessage(d.data);
-else alert(d.error||"上传失败");
-}catch(err){alert("上传失败")}
-finally{hideUploadProgress()}
-e.target.value="";
-}
-
-function connectWebSocket(){
-const p=location.protocol==="https:"?"wss:":"ws:";
-const wsUrl=p+"//"+location.host+"/ws?token="+token;
-try{
-ws=new WebSocket(wsUrl);
-ws.onopen=onWsOpen;
-ws.onclose=onWsClose;
-ws.onerror=onWsError;
-ws.onmessage=onWsMessage;
-}catch(e){console.error("WebSocket连接失败:",e);scheduleReconnect()}
-}
-
-function onWsOpen(){wsReconnectAttempts=0;wsReconnectDelay=1000;updateStatus("在线","on");startHeartbeat()}
-function onWsClose(event){stopHeartbeat();updateStatus("离线","");if(event.code!==1000&&event.code!==1001)scheduleReconnect()}
-function onWsError(error){stopHeartbeat()}
-function onWsMessage(e){
-const m=JSON.parse(e.data);
-if(m.event==="pong"){wsLastPong=Date.now();return}
-if(m.event==="message"){
-if(m.data.senderId)onlineUsers.add(m.data.senderId);
-if(m.data.groupId===groupId)addMessage(m.data);
-}
-if(m.event==="message_recall"){
-// 处理消息撤回
-if(m.data.groupId===groupId){
-const el=$("msgs");
-const msgEl=el.querySelector('[data-mid="'+m.data.id+'"]');
-if(msgEl)msgEl.remove();
-displayedMsgIds.delete(m.data.id);
-}
-}
-if(m.event==="message_read"){
-// 处理已读状态更新
-if(m.data.groupId===groupId){
-updateReadCount(m.data.id,m.data.readCount);
-}
-}
-if(m.event==="typing"){
-// 处理输入状态
-if(m.data.groupId===groupId&&m.data.userId!==user.id){
-showTyping(m.data.nickname);
-}
-}
-if(m.event==="mention"){
-// 处理提及通知
-updateMentionBadge(unreadMentions+1);
-// 可选：显示通知
-if(Notification.permission==="granted"){
-new Notification("有人提及你",{body:m.data.mentionedBy+": "+m.data.content});
-}
-}
-if(m.event==="direct_message"){
-// 处理私聊消息
-if(m.data.senderId!==user.id){
-// 更新私聊徽章
-const badge=$("dmBadge");
-const count=parseInt(badge.textContent||"0")+1;
-badge.textContent=count;
-badge.classList.remove("hidden");
-// 显示通知
-if(Notification.permission==="granted"){
-new Notification("私聊消息",{body:m.data.senderNickname+": "+m.data.content.substring(0,50)});
-}
-}
-}
-if(m.event==="friend_request"){
-// 处理好友请求
-const badge=$("friendBadge");
-const count=parseInt(badge.textContent||"0")+1;
-badge.textContent=count;
-badge.classList.remove("hidden");
-// 显示通知
-if(Notification.permission==="granted"){
-new Notification("好友请求",{body:m.data.from+" 想添加你为好友"});
-}
-}
-}
-
-function updateReadCount(msgId,readCount){
-const el=$("msgs");
-const msgEl=el.querySelector('[data-mid="'+msgId+'"]');
-if(msgEl){
-let readEl=msgEl.querySelector(".msg-read");
-if(!readEl){
-const timeEl=msgEl.querySelector(".msg-time");
-if(timeEl)timeEl.innerHTML+='<span class="msg-read">'+readCount+'已读</span>';
-}else{readEl.textContent=readCount+'已读';}
-}
-}
-
-function scheduleReconnect(){
-if(wsReconnectAttempts>=wsMaxReconnectAttempts){updateStatus("连接失败","");return}
-wsReconnectAttempts++;
-const delay=Math.min(wsReconnectDelay*Math.pow(2,wsReconnectAttempts-1),30000);
-updateStatus("重连中("+wsReconnectAttempts+")","reconnecting");
-setTimeout(()=>{if(!ws||ws.readyState===WebSocket.CLOSED)connectWebSocket()},delay);
-}
-
-function startHeartbeat(){
-stopHeartbeat();
-wsLastPong=Date.now();
-wsHeartbeatInterval=setInterval(()=>{
-if(ws&&ws.readyState===WebSocket.OPEN){
-if(Date.now()-wsLastPong>60000){ws.close();return}
-ws.send(JSON.stringify({event:"ping"}));
-}
-},30000);
-}
-function stopHeartbeat(){if(wsHeartbeatInterval){clearInterval(wsHeartbeatInterval);wsHeartbeatInterval=null}}
-function updateStatus(text,cls){const status=$("status");status.textContent=text;status.className="status";if(cls)status.classList.add(cls)}
-
-function showAdmin(){
-$("channelView").classList.add("hidden");
-$("chatView").classList.add("hidden");
-$("adminView").classList.remove("hidden");
-checkAdminPermissions();
-loadUsers();loadGroups();loadIps();loadPermissions();
-}
-function showChannel(){$("channelView").classList.remove("hidden");$("chatView").classList.add("hidden");$("adminView").classList.add("hidden")}
-function adminTab(name){
-document.querySelectorAll(".admin-tab").forEach(t=>t.classList.remove("on"));
-document.querySelectorAll(".admin-section").forEach(s=>s.classList.remove("on"));
-event.target.classList.add("on");
-$(name+"Section").classList.add("on");
-// 加载对应数据
-if(name==="words")loadSensitiveWords();
-if(name==="logs")loadAuditLogs();
-if(name==="stats")loadStatistics();
-}
-function checkAdminPermissions(){
-const perms=user.permissions||[];
-const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
-$("createUserCard").classList.toggle("hidden",!hasPerm("user_create"));
-$("createGroupCard").classList.toggle("hidden",!hasPerm("group_create"));
-}
-
-async function createUser(){
-const uid=$("newUid").value.trim().toUpperCase();
-const nick=$("newNick").value.trim();
-const pwd=$("newPwd").value;
-if(!nick||pwd.length<6){$("userRes").innerHTML='<div class="err">请填写昵称和密码(6位+)</div>';return}
-try{
-const body={nickname:nick,password:pwd};if(uid)body.uid=uid;
-const d=await api("/api/admin/users",{method:"POST",body:JSON.stringify(body)});
-if(d.success){
-$("userRes").innerHTML='<div class="success">创建成功</div><div style="font-size:12px;margin-top:8px">UID: '+d.data.uid+'<br>昵称: '+d.data.nickname+'<br>密码: '+d.data.password+'</div>';
-$("newUid").value="";$("newNick").value="";$("newPwd").value="";loadUsers();
-}else $("userRes").innerHTML='<div class="err">'+d.error+'</div>';
-}catch(e){$("userRes").innerHTML='<div class="err">网络错误</div>'}
-}
-
-async function loadUsers(){
-try{
-const d=await api("/api/admin/users");
-const el=$("userList");
-if(d.success){
-const perms=user.permissions||[];
-const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
-el.innerHTML=d.data.length?d.data.map(u=>{
-userPermissions[u.uid]=u.permissions||[];
-if(u.online)onlineUsers.add(u.id);
-let badges='<span class="item-badge '+(u.online?"online":"")+'">'+(u.online?"在线":"离线")+'</span>';
-if(u.role==="admin")badges='<span class="item-badge admin">管理员</span>'+badges;
-if(u.status==="banned")badges='<span class="item-badge banned">已封禁</span>'+badges;
-if(u.mutedUntil&&new Date(u.mutedUntil)>new Date())badges+='<span class="item-badge muted">禁言中</span>';
-let actions="";
-if(u.role!=="admin"){
-if(hasPerm("user_ban"))actions+=(u.status==="banned"?'<button class="btn sm" data-act="unban" data-uid="'+u.uid+'">解封</button>':'<button class="btn sm warn" data-act="ban" data-uid="'+u.uid+'">封禁</button>');
-if(hasPerm("user_mute"))actions+='<button class="btn sm warn" data-act="mute" data-uid="'+u.uid+'" data-nick="'+esc(u.nickname)+'">禁言</button>';
-if(hasPerm("user_kick"))actions+='<button class="btn sm" data-act="kick" data-uid="'+u.uid+'">踢出</button>';
-if(hasPerm("user_kick"))actions+='<button class="btn sm danger" data-act="delete" data-uid="'+u.uid+'">删除</button>';
-if(hasPerm("permission_grant"))actions+='<button class="btn sm success" data-act="perm" data-uid="'+u.uid+'" data-nick="'+esc(u.nickname)+'">权限</button>';
-}
-const permTags=(u.permissions||[]).length?'<div class="permission-list">'+(u.permissions||[]).slice(0,5).map(p=>'<span class="permission-tag">'+p+'</span>').join("")+(u.permissions.length>5?'<span class="permission-tag">+'+(u.permissions.length-5)+'</span>':"")+"</div>":"";
-return'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(u.nickname)+'</span>'+badges+'</div><div class="item-info">UID: '+u.uid+(u.lastIp?" | IP: "+u.lastIp:"")+'</div>'+permTags+(actions?'<div class="item-actions">'+actions+'</div>':"")+"</div>";
-}).join(""):'<div class="empty">暂无用户</div>';
-}
-}catch(e){}
-}
-
-async function loadGroups(){
-try{
-const d=await api("/api/admin/groups");
-const el=$("groupList");
-if(d.success){
-const perms=user.permissions||[];
-const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
-el.innerHTML=d.data.length?d.data.map(g=>{
-let actions="";
-if(hasPerm("message_delete"))actions+='<button class="btn sm" data-act="clearGroup" data-gid="'+g.id+'">清空</button>';
-if(hasPerm("group_delete"))actions+='<button class="btn sm danger" data-act="deleteGroup" data-gid="'+g.id+'">删除</button>';
-return'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(g.name)+'</span><span class="item-badge">'+g.memberCount+'人</span></div><div class="item-info">暗号: '+esc(g.name)+'</div>'+(actions?'<div class="item-actions">'+actions+'</div>':"")+"</div>";
-}).join(""):'<div class="empty">暂无频道</div>';
-}
-}catch(e){}
-}
-
-async function loadIps(){
-try{
-const d=await api("/api/admin/ips");
-const el=$("ipList");
-if(d.success)el.innerHTML=d.data.length?d.data.map(ip=>'<div class="item-card"><div class="item-header"><span class="item-title">'+ip.ip+'</span><button class="btn sm" data-act="unbanIp" data-ip="'+ip.ip+'">解封</button></div><div class="item-info">'+(ip.reason||"")+" | "+ip.createdAt+'</div></div>').join(""):'<div class="empty">暂无封禁IP</div>';
-}catch(e){}
-}
-
-async function loadPermissions(){
-try{
-const d=await api("/api/admin/permissions");
-if(d.success)allPermissions=d.data;
-}catch(e){}
-}
-
-async function loadSensitiveWords(){
-try{
-const d=await api("/api/admin/sensitive-words");
-const el=$("wordList");
-if(d.success)el.innerHTML=d.data.length?d.data.map(w=>'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(w.word)+'</span><button class="btn sm danger" data-act="delWord" data-wid="'+w.id+'">删除</button></div><div class="item-info">替换为: '+esc(w.replacement)+'</div></div>').join(""):'<div class="empty">暂无敏感词</div>';
-}catch(e){}
-}
-
-async function addSensitiveWord(){
-const word=$("newWord").value.trim();
-if(!word){alert("请输入敏感词");return}
-const replacement=$("wordReplacement").value.trim()||"***";
-try{
-const d=await api("/api/admin/sensitive-words",{method:"POST",body:JSON.stringify({word,replacement})});
-if(d.success){$("newWord").value="";$("wordReplacement").value="";loadSensitiveWords()}
-else alert(d.error||"添加失败");
-}catch(e){alert("添加失败")}
-}
-
-async function loadAuditLogs(){
-try{
-const d=await api("/api/admin/audit-logs");
-const el=$("logList");
-if(d.success)el.innerHTML=d.data.length?d.data.map(l=>'<div class="item-card"><div class="item-header"><span class="item-title">'+esc(l.action)+'</span><span class="item-info">'+l.createdAt+'</span></div>'+(l.userId?'<div class="item-info">用户: '+esc(l.userId)+'</div>':'')+(l.details?'<div class="item-info">'+esc(l.details)+'</div>':'')+'</div>').join(""):'<div class="empty">暂无日志</div>';
-}catch(e){}
-}
-
-async function loadStatistics(){
-try{
-const d=await api("/api/admin/statistics");
-const el=$("statsContent");
-if(d.success){
-const s=d.data;
-el.innerHTML='<div class="stats-grid">'+
-'<div class="stat-card"><div class="stat-value">'+s.users.total+'</div><div class="stat-label">用户总数</div></div>'+
-'<div class="stat-card"><div class="stat-value">'+s.users.online+'</div><div class="stat-label">在线用户</div></div>'+
-'<div class="stat-card"><div class="stat-value">'+s.groups.total+'</div><div class="stat-label">频道总数</div></div>'+
-'<div class="stat-card"><div class="stat-value">'+s.messages.total+'</div><div class="stat-label">消息总数</div></div>'+
-'<div class="stat-card"><div class="stat-value">'+s.messages.today+'</div><div class="stat-label">今日消息</div></div>'+
-'<div class="stat-card"><div class="stat-value">'+s.direct.messages+'</div><div class="stat-label">私聊消息</div></div>'+
-'<div class="stat-card"><div class="stat-value">'+s.direct.friendships+'</div><div class="stat-label">好友关系</div></div>'+
-'<div class="stat-card"><div class="stat-value">'+formatUptime(s.system.uptime)+'</div><div class="stat-label">运行时间</div></div>'+
-'</div>';
-}
-}catch(e){}
-}
-
-function formatUptime(secs){
-const d=Math.floor(secs/86400);
-const h=Math.floor((secs%86400)/3600);
-const m=Math.floor((secs%3600)/60);
-return(d>0?d+'天 ':'')+h+'时'+m+'分';
-}
-
-async function showGroupInfo(){
-if(!groupId)return;
-try{
-const d=await api("/api/groups/"+groupId);
-if(d.success){
-const info=d.data;
-const isOwner=info.ownerId===user.id;
-const isAdmin=user.role==="admin";
-let html='<div style="padding:8px">';
-html+='<p style="font-size:14px;font-weight:500;margin-bottom:8px">'+esc(info.name)+'</p>';
-html+='<p style="font-size:12px;color:var(--muted);margin-bottom:8px">成员: '+info.memberCount+'人</p>';
-if(info.description){
-html+='<p style="font-size:12px;margin-bottom:8px"><strong>描述:</strong> '+esc(info.description)+'</p>';
-}
-if(info.announcement){
-html+='<p style="font-size:12px;margin-bottom:8px;color:var(--accent)"><strong>公告:</strong> '+esc(info.announcement)+'</p>';
-}
-if(isOwner||isAdmin){
-html+='<hr style="border-color:var(--border);margin:12px 0">';
-html+='<input class="input" id="groupDescInput" placeholder="频道描述（最多200字）" value="'+esc(info.description||"")+'">';
-html+='<textarea class="input" id="groupAnnInput" placeholder="频道公告（最多500字）" style="margin-top:8px;height:60px">'+esc(info.announcement||"")+'</textarea>';
-html+='<button class="btn full" style="margin-top:8px" id="saveGroupInfoBtn">保存</button>';
-html+='<hr style="border-color:var(--border);margin:12px 0">';
-html+='<button class="btn full" id="createInviteBtn">创建邀请链接</button>';
-html+='<div id="inviteLinkDisplay" style="margin-top:8px;display:none"></div>';
-}
-html+='</div>';
-$("groupInfoContent").innerHTML=html;
-$("groupInfoModal").classList.remove("hidden");
-if(isOwner||isAdmin){
-$("saveGroupInfoBtn").onclick=saveGroupInfo;
-$("createInviteBtn").onclick=createInviteLink;
-}
-}
-}catch(e){}
-}
-
-async function createInviteLink(){
-if(!groupId)return;
-try{
-const d=await api("/api/groups/"+groupId+"/invite",{method:"POST"});
-if(d.success){
-const link=location.origin+"/invite/"+d.data.code;
-$("inviteLinkDisplay").innerHTML='<div style="padding:8px;background:var(--bg);border-radius:8px;font-size:12px;word-break:break-all">'+
-'<strong>邀请链接:</strong><br>'+link+'<br><button class="btn sm" style="margin-top:8px" onclick="navigator.clipboard.writeText(\''+link+'\');alert(\'已复制\')">复制</button>'+
-'</div>';
-$("inviteLinkDisplay").style.display="block";
-}else{alert(d.error||"创建失败")}
-}catch(e){alert("创建失败")}
-}
-
-// 处理邀请链接
-async function handleInviteLink(){
-const path=location.pathname;
-if(path.startsWith("/invite/")){
-const code=path.substring(8);
-try{
-const d=await api("/api/invite/"+code,{method:"POST"});
-if(d.success){
-alert("已加入频道: "+d.data.groupName);
-history.replaceState(null,"","/");
-loadMyChannels();
-}else{
-alert(d.error||"邀请链接无效");
-history.replaceState(null,"","/");
-}
-}catch(e){
-alert("加入失败");
-history.replaceState(null,"","/");
-}
-}
-}
-
-async function saveGroupInfo(){
-const desc=$("groupDescInput").value.trim();
-const ann=$("groupAnnInput").value.trim();
-try{
-const d=await api("/api/groups/"+groupId,{method:"PUT",body:JSON.stringify({description:desc,announcement:ann})});
-if(d.success){
-$("groupInfoModal").classList.add("hidden");
-// 更新公告显示
-if(ann){
-$("groupAnnouncement").textContent="📢 "+ann;
-$("groupAnnouncement").classList.remove("hidden");
-}else{
-$("groupAnnouncement").classList.add("hidden");
-}
-}else{alert(d.error||"保存失败")}
-}catch(e){alert("保存失败")}
-}
-
-// 搜索功能
-let searchTimeout=null;
-
-async function doSearch(){
-if(!groupId)return;
-const q=$("searchInput").value.trim();
-if(q.length<2){
-$("searchResults").innerHTML='<div class="empty">请输入至少2个字符</div>';
-return;
-}
-try{
-const d=await api("/api/messages/group/"+groupId+"/search?q="+encodeURIComponent(q));
-if(d.success){
-if(d.data.length===0){
-$("searchResults").innerHTML='<div class="empty">未找到相关消息</div>';
-}else{
-$("searchResults").innerHTML=d.data.map(m=>{
-const isMe=m.senderId===user.id;
-return'<div class="search-result-item" data-mid="'+m.id+'">'+
-'<div class="search-result-nick">'+esc(m.senderNickname)+' <span class="msg-time">'+formatTime(m.createdAt)+'</span></div>'+
-'<div class="search-result-content">'+esc(m.content)+'</div>'+
-'</div>';
-}).join("");
-}
-}
-}catch(e){$("searchResults").innerHTML='<div class="empty">搜索失败</div>'}
-}
-
-function showSearch(){
-$("searchModal").classList.remove("hidden");
-$("searchInput").value="";
-$("searchResults").innerHTML="";
-$("searchInput").focus();
-}
-
-// 成员列表
-async function showMembers(){
-if(!groupId)return;
-try{
-const d=await api("/api/groups/"+groupId+"/members");
-if(d.success){
-const el=$("membersList");
-el.innerHTML=d.data.map(m=>{
-const avatarHtml=m.avatar?'<img src="'+m.avatar+'" alt="">':m.nickname.charAt(0).toUpperCase();
-const roleBadge=m.role==="admin"?'<span class="member-badge admin">管理员</span>':'';
-return'<div class="member-item">'+
-'<div class="member-avatar">'+avatarHtml+'</div>'+
-'<div class="member-info">'+
-'<div class="member-nick">'+esc(m.nickname)+roleBadge+'</div>'+
-'<div class="member-status '+(m.isOnline?"online":"offline")+'">'+(m.isOnline?"在线":"离线")+'</div>'+
-'</div>'+
-'</div>';
-}).join("");
-$("membersModal").classList.remove("hidden");
-}
-}catch(e){}
-}
-
-// 私聊功能
-let currentDmUser=null;
-
-async function showConversations(){
-try{
-const d=await api("/api/conversations");
-if(d.success){
-const el=$("conversationsList");
-if(d.data.length===0){
-el.innerHTML='<div class="empty">暂无私聊</div>';
-}else{
-el.innerHTML=d.data.map(c=>{
-const avatarHtml=c.avatar?'<img src="'+c.avatar+'" alt="">':c.nickname.charAt(0).toUpperCase();
-const unreadBadge=c.unread>0?'<span class="mention-badge">'+c.unread+'</span>':"";
-return'<div class="conversation-item" data-uid="'+c.userId+'" data-nick="'+esc(c.nickname)+'">'+
-'<div class="member-avatar">'+avatarHtml+'</div>'+
-'<div class="member-info">'+
-'<div class="member-nick">'+esc(c.nickname)+unreadBadge+'</div>'+
-'<div class="member-status">'+esc(c.lastMessage)+'</div>'+
-'</div>'+
-'</div>';
-}).join("");
-}
-$("conversationsModal").classList.remove("hidden");
-}
-}catch(e){}
-}
-
-async function openDirectChat(userId,nickname){
-currentDmUser={id:userId,nickname:nickname};
-$("directChatTitle").textContent="与 "+nickname+" 的私聊";
-$("directMsgs").innerHTML="";
-$("conversationsModal").classList.add("hidden");
-$("directChatModal").classList.remove("hidden");
-loadDirectMessages(userId);
-}
-
-async function loadDirectMessages(userId){
-try{
-const d=await api("/api/direct/"+userId);
-if(d.success){
-const el=$("directMsgs");
-el.innerHTML=d.data.map(m=>{
-const isMe=m.senderId===user.id;
-const avatarHtml=m.senderAvatar?'<img src="'+m.senderAvatar+'" alt="">':m.senderNickname.charAt(0).toUpperCase();
-return'<div class="msg-row'+(isMe?" me":"")+'">'+
-'<div class="msg-avatar">'+avatarHtml+'</div>'+
-'<div class="msg-bubble '+(isMe?"out":"in")+'">'+
-'<div class="msg-nick">'+esc(m.senderNickname)+'</div>'+
-esc(m.content)+
-'<div class="msg-time">'+formatTime(m.createdAt)+'</div>'+
-'</div></div>';
-}).join("");
-el.scrollTop=el.scrollHeight;
-}
-}catch(e){}
-}
-
-async function sendDirectMessage(){
-if(!currentDmUser)return;
-const input=$("directInput");
-const content=input.value.trim();
-if(!content)return;
-try{
-const d=await api("/api/direct/"+currentDmUser.id,{method:"POST",body:JSON.stringify({content})});
-if(d.success){
-input.value="";
-loadDirectMessages(currentDmUser.id);
-}
-}catch(e){}
-}
-
-// 好友功能
-async function showFriends(){
-loadFriends();
-loadFriendRequests();
-$("friendsModal").classList.remove("hidden");
-}
-
-async function loadFriends(){
-try{
-const d=await api("/api/friends");
-if(d.success){
-const el=$("friendsList");
-if(d.data.length===0){
-el.innerHTML='<div class="empty">暂无好友</div>';
-}else{
-el.innerHTML=d.data.map(f=>{
-const avatarHtml=f.avatar?'<img src="'+f.avatar+'" alt="">':f.nickname.charAt(0).toUpperCase();
-return'<div class="friend-item" data-uid="'+f.id+'" data-nick="'+esc(f.nickname)+'">'+
-'<div class="member-avatar">'+avatarHtml+'</div>'+
-'<div class="member-info">'+
-'<div class="member-nick">'+esc(f.nickname)+'</div>'+
-'</div>'+
-'<button class="btn sm" onclick="openDirectChat(\''+f.id+'\',\''+esc(f.nickname)+'\')">私聊</button>'+
-'</div>';
-}).join("");
-}
-}
-}catch(e){}
-}
-
-async function loadFriendRequests(){
-try{
-const d=await api("/api/friends/requests");
-if(d.success){
-const el=$("friendRequests");
-if(d.data.length===0){
-el.innerHTML='<div class="empty">暂无好友请求</div>';
-}else{
-el.innerHTML=d.data.map(r=>{
-const avatarHtml=r.avatar?'<img src="'+r.avatar+'" alt="">':r.nickname.charAt(0).toUpperCase();
-return'<div class="friend-item">'+
-'<div class="member-avatar">'+avatarHtml+'</div>'+
-'<div class="member-info">'+
-'<div class="member-nick">'+esc(r.nickname)+'</div>'+
-'</div>'+
-'<button class="btn sm success" onclick="acceptFriend(\''+r.userId+'\')">接受</button>'+
-'</div>';
-}).join("");
-}
-// 更新徽章
-if(d.data.length>0){
-$("friendBadge").textContent=d.data.length;
-$("friendBadge").classList.remove("hidden");
-}
-}
-}catch(e){}
-}
-
-async function acceptFriend(friendId){
-try{
-const d=await api("/api/friends/"+friendId+"/accept",{method:"POST"});
-if(d.success){
-loadFriends();
-loadFriendRequests();
-}
-}catch(e){}
-}
-
-async function addFriendFromMenu(userId){
-try{
-const d=await api("/api/friends/"+userId,{method:"POST"});
-if(d.success){
-alert("好友请求已发送");
-}else{alert(d.error||"添加失败")}
-}catch(e){alert("添加失败")}
-}
-
-// 登出
-async function logout(){
-try{
-await api("/api/auth/logout",{method:"POST"});
-}catch(e){}
-localStorage.clear();
-token="";
-user=null;
-ws&&ws.close();
-$("mainPage").classList.add("hidden");
-$("loginPage").classList.remove("hidden");
-$("loginErr").textContent="";
-}
-
-// 个人设置
-function showSettings(){
-$("newNickname").value=user.nickname;
-$("oldPassword").value="";
-$("newPassword").value="";
-$("settingsModal").classList.remove("hidden");
-}
-
-async function updateNickname(){
-const nickname=$("newNickname").value.trim();
-if(!nickname){alert("请输入昵称");return}
-if(nickname.length>20){alert("昵称最多20字符");return}
-try{
-const d=await api("/api/users/profile",{method:"PUT",body:JSON.stringify({nickname})});
-if(d.success){
-user.nickname=nickname;
-localStorage.setItem("u",JSON.stringify(user));
-alert("昵称已更新");
-}else{alert(d.error||"更新失败")}
-}catch(e){alert("更新失败")}
-}
-
-async function changePassword(){
-const oldPwd=$("oldPassword").value;
-const newPwd=$("newPassword").value;
-if(!oldPwd||!newPwd){alert("请填写完整");return}
-if(newPwd.length<6){alert("新密码至少6位");return}
-try{
-const d=await api("/api/users/password",{method:"PUT",body:JSON.stringify({old_password:oldPwd,new_password:newPwd})});
-if(d.success){
-alert("密码已更新，请重新登录");
-localStorage.clear();
-location.reload();
-}else{alert(d.error||"修改失败")}
-}catch(e){alert("修改失败")}
-}
-
-async function uploadAvatar(e){
-const file=e.target.files[0];
-if(!file)return;
-if(file.size>2*1024*1024){alert("图片太大（最大2MB）");return}
-const formData=new FormData();
-formData.append("file",file);
-try{
-const r=await fetch(API+"/api/users/avatar",{method:"POST",headers:{"Authorization":"Bearer "+token},body:formData});
-const d=await r.json();
-if(d.success){
-user.avatar=d.data.avatar;
-localStorage.setItem("u",JSON.stringify(user));
-alert("头像已更新");
-}else{alert(d.error||"上传失败")}
-}catch(err){alert("上传失败")}
-e.target.value="";
-}
-
-// 提及功能
-let unreadMentions=0;
-
-async function loadMentions(){
-try{
-const d=await api("/api/mentions");
-if(d.success){
-const el=$("mentionsList");
-if(d.data.length===0){
-el.innerHTML='<div class="empty">暂无提及</div>';
-}else{
-el.innerHTML=d.data.map(m=>{
-const readClass=m.read?"":"unread";
-return'<div class="mention-item '+readClass+'" data-mid="'+m.id+'" data-gid="'+m.groupId+'">'+
-'<div class="mention-header">'+
-'<span class="mention-from">'+esc(m.mentionedBy)+'</span>'+
-'<span class="mention-group">'+esc(m.groupName)+'</span>'+
-'</div>'+
-'<div class="mention-content">'+esc(m.content)+'</div>'+
-'</div>';
-}).join("");
-}
-// 更新未读数
-const unread=d.data.filter(m=>!m.read).length;
-updateMentionBadge(unread);
-}
-}catch(e){}
-}
-
-function updateMentionBadge(count){
-unreadMentions=count;
-const badge=$("mentionBadge");
-if(count>0){
-badge.textContent=count>99?"99+":count;
-badge.classList.remove("hidden");
-}else{
-badge.classList.add("hidden");
-}
-}
-
-function showMentions(){
-loadMentions();
-$("mentionsModal").classList.remove("hidden");
-}
-
-async function showUserMenu(e,sid,nick){
-e.stopPropagation();
-const menu=$("userMenu");
-const isSelf=sid===user.id;
-const perms=user.permissions||[];
-const hasPerm=(p)=>user.role==="admin"||perms.includes(p);
-let userInfo=null;
-try{const d=await api("/api/users/"+sid);if(d.success)userInfo=d.data}catch(err){}
-const avatarEl=$("menuAvatar");
-if(userInfo&&userInfo.avatar)avatarEl.innerHTML='<img src="'+userInfo.avatar+'" alt="">';
-else avatarEl.textContent=nick.charAt(0).toUpperCase();
-$("menuUserName").textContent=nick;
-$("menuUserInfo").textContent="UID: "+(userInfo?userInfo.uid:sid);
-const statusEl=$("menuUserStatus");
-if(userInfo){
-if(userInfo.status==="banned"){statusEl.textContent="已封禁";statusEl.className="user-menu-status offline"}
-else if(userInfo.muted){statusEl.textContent="禁言中";statusEl.className="user-menu-status muted"}
-else if(userInfo.online){statusEl.textContent="在线";statusEl.className="user-menu-status online"}
-else{statusEl.textContent="离线";statusEl.className="user-menu-status offline"}
-}else statusEl.textContent="";
-let actionsHtml="";
-if(!isSelf){
-// 添加好友按钮（对所有用户显示）
-actionsHtml+='<button class="user-menu-item" data-act="menuAddFriend">添加好友</button>';
-actionsHtml+='<button class="user-menu-item" data-act="menuDirectChat">私聊</button>';
-if(hasPerm("user_mute"))actionsHtml+='<button class="user-menu-item warn" data-act="menuMute">禁言</button>';
-if(hasPerm("user_mute"))actionsHtml+='<button class="user-menu-item" data-act="menuUnmute">解除禁言</button>';
-if(hasPerm("user_kick"))actionsHtml+='<button class="user-menu-item warn" data-act="menuKick">踢出</button>';
-if(hasPerm("user_ban"))actionsHtml+='<button class="user-menu-item danger" data-act="menuBan">封禁</button>';
-if(hasPerm("permission_grant"))actionsHtml+='<button class="user-menu-item" data-act="menuGrant">管理权限</button>';
-}
-$("menuActions").innerHTML=actionsHtml;
-menuTargetUser={uid:userInfo?userInfo.uid:sid,userId:sid,nick};
-menu.style.left=Math.min(e.clientX,window.innerWidth-200)+"px";
-menu.style.top=Math.min(e.clientY,window.innerHeight-300)+"px";
-menu.classList.remove("hidden");
-}
-
-function closeUserMenu(){$("userMenu").classList.add("hidden")}
-function openPermModal(uid,nick){menuTargetUser={uid,nick};$("permUserName").textContent=nick;renderPermGrid(uid);$("permModal").classList.remove("hidden")}
-function renderPermGrid(uid){
-const grid=$("permGrid");
-const currentPerms=userPermissions[uid]||[];
-grid.innerHTML=allPermissions.map(p=>'<div class="permission-item"><label><input type="checkbox" '+(currentPerms.includes(p.name)?"checked":"")+' data-perm="'+p.name+'"> '+p.description+'</label></div>').join("");
-}
-
-async function savePermissions(){
-if(!menuTargetUser)return;
-const checkboxes=document.querySelectorAll("#permGrid input[type='checkbox']");
-const permToGrant=[],permToRevoke=[];
-checkboxes.forEach(cb=>{
-const permName=cb.dataset.perm;
-const currentPerms=userPermissions[menuTargetUser.uid]||[];
-if(cb.checked&&!currentPerms.includes(permName))permToGrant.push(permName);
-else if(!cb.checked&¤tPerms.includes(permName))permToRevoke.push(permName);
-});
-for(const permName of permToGrant)await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"POST",body:JSON.stringify({permission_name:permName})});
-for(const permName of permToRevoke)await api("/api/admin/users/"+menuTargetUser.uid+"/permissions",{method:"DELETE",body:JSON.stringify({permission_name:permName})});
-$("permModal").classList.add("hidden");
-loadUsers();
-}
-
-function openMuteModal(uid,nick){
-menuTargetUser={uid,nick};
-$("muteUserName").textContent=nick;
-const durations=[5,30,60,360,1440];
-$("muteOptions").innerHTML=durations.map(d=>'<div class="mute-option" data-duration="'+d+'">'+(d<60?d+"分钟":d===60?"1小时":d===360?"6小时":"1天")+'</div>').join("");
-selectedMuteDuration=30;
-$("muteModal").classList.remove("hidden");
-}
-
-document.addEventListener("click",async function(e){
-const t=e.target;
-const act=t.dataset.act;
-if(act==="ban"&&confirm("确定封禁该用户?")){await api("/api/admin/users/"+t.dataset.uid+"/ban",{method:"PUT"});loadUsers()}
-if(act==="unban"){await api("/api/admin/users/"+t.dataset.uid+"/unban",{method:"PUT"});loadUsers()}
-if(act==="kick"){await api("/api/admin/users/"+t.dataset.uid+"/kick",{method:"PUT"});alert("已踢出")}
-if(act==="delete"&&confirm("确定删除该用户?")){await api("/api/admin/users/"+t.dataset.uid,{method:"DELETE"});loadUsers()}
-if(act==="mute")openMuteModal(t.dataset.uid,t.dataset.nick);
-if(act==="perm")openPermModal(t.dataset.uid,t.dataset.nick);
-if(act==="clearGroup"&&confirm("确定清空该频道所有消息?")){await api("/api/messages/group/"+t.dataset.gid,{method:"DELETE"});alert("已清空")}
-if(act==="deleteGroup"&&confirm("确定删除该频道?")){await api("/api/admin/groups/"+t.dataset.gid,{method:"DELETE"});loadGroups()}
-if(act==="unbanIp"){await api("/api/admin/ips/"+t.dataset.ip,{method:"DELETE"});loadIps()}
-if(act==="delWord"){await api("/api/admin/sensitive-words/"+t.dataset.wid,{method:"DELETE"});loadSensitiveWords()}
-if(act==="menuMute"){closeUserMenu();if(menuTargetUser)openMuteModal(menuTargetUser.uid,menuTargetUser.nick)}
-if(act==="menuUnmute"){closeUserMenu();if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/unmute",{method:"PUT"});alert("已解除禁言")}}
-if(act==="menuKick"){closeUserMenu();if(menuTargetUser){await api("/api/admin/users/"+menuTargetUser.uid+"/kick",{method:"PUT"});alert("已踢出")}}
-if(act==="menuBan"){closeUserMenu();if(menuTargetUser&&confirm("确定封禁该用户?")){await api("/api/admin/users/"+menuTargetUser.uid+"/ban",{method:"PUT"});alert("已封禁")}}
-if(act==="menuGrant"){closeUserMenu();if(menuTargetUser)openPermModal(menuTargetUser.uid,menuTargetUser.nick)}
-if(act==="menuAddFriend"){closeUserMenu();if(menuTargetUser)addFriendFromMenu(menuTargetUser.userId)}
-if(act==="menuDirectChat"){closeUserMenu();if(menuTargetUser)openDirectChat(menuTargetUser.userId,menuTargetUser.nick)}
-if(t.closest(".channel-card")){const gid=t.closest(".channel-card").dataset.gid;if(gid){groupId=gid;showChat()}}
-if(t.classList.contains("mute-option")){selectedMuteDuration=parseInt(t.dataset.duration);document.querySelectorAll(".mute-option").forEach(el=>el.classList.remove("on"));t.classList.add("on")}
-if(t.classList.contains("admin-tab"))adminTab(t.dataset.tab);
-if(t.closest(".conversation-item")){
-const item=t.closest(".conversation-item");
-openDirectChat(item.dataset.uid,item.dataset.nick);
-}
-if(t.closest(".friend-item")&&!t.classList.contains("btn")){
-const item=t.closest(".friend-item");
-if(item.dataset.uid)openDirectChat(item.dataset.uid,item.dataset.nick);
-}
-if(t.closest(".msg-avatar")){const av=t.closest(".msg-avatar");showUserMenu(e,av.dataset.sid,av.dataset.nick)}
-if(!$("userMenu").contains(t)&&!t.closest(".msg-avatar"))closeUserMenu();
-});
+function app(){
+return {
+// 状态
+loggedIn: false,
+user: null,
+token: '',
+theme: 'dark',
+currentGroup: null,
+groups: [],
+messages: [],
+msgInput: '',
+channelInput: '',
+ws: null,
+isAdmin: false,
+showAdmin: false,
+adminTab: 'users',
+users: [],
+allGroups: [],
+sensitiveWords: [],
+stats: {},
+newUser: {uid: '', nickname: '', password: ''},
+newWord: {word: '', replacement: '***'},
+loginForm: {uid: '', pwd: ''},
+loginError: '',
+loginLoading: false,
+userMenu: {show: false, x: 0, y: 0, uid: '', userId: '', nickname: ''},
 
 // 初始化
-window.onload=function(){
-console.log('ARCANUM starting...');
+async init(){
+console.log('ARCANUM initializing...');
+this.loadTheme();
+const t = localStorage.getItem('t');
+const u = localStorage.getItem('u');
+if(t && u){
+this.token = t;
 try{
-initTheme();
-typeWriter($("logoText"),"ARCANUM",0);
-typeWriter($("logoText2"),"ARCANUM",0);
-}catch(e){console.error('init error:',e)}
-
-// 绑定事件
-try{
-$("loginBtn").onclick=login;
-$("themeToggle").onclick=toggleTheme;
-$("loginPwd").onkeydown=function(e){if(e.key==="Enter")login()};
-$("enterChannelBtn").onclick=enterChannel;
-$("cipherInput").onkeydown=function(e){if(e.key==="Enter")enterChannel()};
-$("leaveChatBtn").onclick=leaveChat;
-$("sendBtn").onclick=send;
-$("msgInput").onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};
-$("msgInput").oninput=function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,80)+"px";sendTyping()};
-$("imageInput").onchange=uploadImage;
-$("fileInput").onchange=uploadFile;
-$("showAdminBtn").onclick=showAdmin;
-$("showChannelBtn").onclick=showChannel;
-$("createUserBtn").onclick=createUser;
-$("createChannelBtn").onclick=function(){
-const name=$("newChan").value.trim();if(!name)return;
-api("/api/groups",{method:"POST",body:JSON.stringify({name})}).then(d=>{
-if(d.success){$("chanRes").innerHTML='<div class="success">创建成功: '+name+'</div>';$("newChan").value="";loadGroups()}
-else $("chanRes").innerHTML='<div class="err">'+d.error+'</div>';
-});
-};
-$("addWordBtn").onclick=addSensitiveWord;
-$("closeUserMenuBtn").onclick=closeUserMenu;
-$("closePermModalBtn").onclick=function(){$("permModal").classList.add("hidden")};
-$("closeMuteModalBtn").onclick=function(){$("muteModal").classList.add("hidden")};
-$("savePermsBtn").onclick=savePermissions;
-$("confirmMuteBtn").onclick=function(){
-if(!menuTargetUser)return;
-api("/api/admin/users/"+menuTargetUser.uid+"/mute",{method:"PUT",body:JSON.stringify({duration_minutes:selectedMuteDuration})}).then(function(){$("muteModal").classList.add("hidden");loadUsers()});
-};
-$("permModal").onclick=function(e){if(e.target===this)$("permModal").classList.add("hidden")};
-$("muteModal").onclick=function(e){if(e.target===this)$("muteModal").classList.add("hidden")};
-$("closeGroupInfoModalBtn").onclick=function(){$("groupInfoModal").classList.add("hidden")};
-$("groupInfoModal").onclick=function(e){if(e.target===this)$("groupInfoModal").classList.add("hidden")};
-$("groupInfoBtn").onclick=showGroupInfo;
-$("closeSearchModalBtn").onclick=function(){$("searchModal").classList.add("hidden")};
-$("searchModal").onclick=function(e){if(e.target===this)$("searchModal").classList.add("hidden")};
-$("searchBtn").onclick=showSearch;
-$("closeMembersModalBtn").onclick=function(){$("membersModal").classList.add("hidden")};
-$("membersModal").onclick=function(e){if(e.target===this)$("membersModal").classList.add("hidden")};
-$("membersBtn").onclick=showMembers;
-$("settingsBtn").onclick=showSettings;
-$("logoutBtn").onclick=logout;
-$("closeSettingsModalBtn").onclick=function(){$("settingsModal").classList.add("hidden")};
-$("mentionsBtn").onclick=showMentions;
-$("closeMentionsModalBtn").onclick=function(){$("mentionsModal").classList.add("hidden")};
-$("mentionsModal").onclick=function(e){if(e.target===this)$("mentionsModal").classList.add("hidden")};
-$("mentionsList").onclick=function(e){
-const item=e.target.closest(".mention-item");
-if(item){
-const mid=item.dataset.mid;
-api("/api/mentions/"+mid+"/read",{method:"POST"});
-item.classList.remove("unread");
-loadMentions();
-}
-};
-// 私聊和好友
-$("conversationsBtn").onclick=showConversations;
-$("closeConversationsModalBtn").onclick=function(){$("conversationsModal").classList.add("hidden")};
-$("conversationsModal").onclick=function(e){if(e.target===this)$("conversationsModal").classList.add("hidden")};
-$("friendsBtn").onclick=showFriends;
-$("closeFriendsModalBtn").onclick=function(){$("friendsModal").classList.add("hidden")};
-$("friendsModal").onclick=function(e){if(e.target===this)$("friendsModal").classList.add("hidden")};
-$("closeDirectChatModalBtn").onclick=function(){$("directChatModal").classList.add("hidden")};
-$("directChatModal").onclick=function(e){if(e.target===this)$("directChatModal").classList.add("hidden")};
-$("directInput").onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendDirectMessage()}};
-$("settingsModal").onclick=function(e){if(e.target===this)$("settingsModal").classList.add("hidden")};
-$("updateNicknameBtn").onclick=updateNickname;
-$("changePasswordBtn").onclick=changePassword;
-$("avatarInput").onchange=uploadAvatar;
-$("closeForwardModalBtn").onclick=function(){$("forwardModal").classList.add("hidden")};
-$("forwardModal").onclick=function(e){if(e.target===this)$("forwardModal").classList.add("hidden")};
-$("forwardList").onclick=function(e){
-const item=e.target.closest(".forward-item");
-if(item){
-forwardMessage(item.dataset.gid);
-}
-};
-$("searchInput").oninput=function(){
-clearTimeout(searchTimeout);
-searchTimeout=setTimeout(doSearch,300);
-};
-// 滚动加载更多消息
-$("msgs").addEventListener("scroll",function(){
-if(this.scrollTop<50&&!isLoadingMore){
-loadMoreMsgs();
-}
-});
-}catch(e){console.error('event binding error:',e)}
-
-// 检查已登录状态
-const t=localStorage.getItem("t"),u=localStorage.getItem("u");
-if(t&&u){
-token=t;
-try{
-user=JSON.parse(u);
-api("/api/auth/me").then(function(me){
+this.user = JSON.parse(u);
+const me = await this.api('/api/auth/me');
 if(me.success){
-user=me.data;
-localStorage.setItem("u",JSON.stringify(user));
-showMain();
-handleInviteLink();
+this.user = me.data;
+this.isAdmin = this.user.role === 'admin';
+this.loggedIn = true;
+this.connectWS();
+this.loadGroups();
 }else{
-localStorage.clear();
-token="";
-user=null;
+this.clearAuth();
 }
-}).catch(function(){
-localStorage.clear();
-token="";
-user=null;
-});
 }catch(e){
-localStorage.clear();
-token="";
-user=null;
+this.clearAuth();
 }
+}
+},
+
+// API调用
+async api(path, options = {}){
+const url = location.origin + path;
+const headers = {
+'Content-Type': 'application/json',
+...options.headers
+};
+if(this.token) headers['Authorization'] = 'Bearer ' + this.token;
+try{
+const r = await fetch(url, {...options, headers});
+return await r.json();
+}catch(e){
+console.error('API error:', e);
+return {error: e.message};
+}
+},
+
+// 认证
+async login(){
+if(!this.loginForm.uid || !this.loginForm.pwd){
+this.loginError = '请输入UID和密码';
+return;
+}
+this.loginLoading = true;
+this.loginError = '';
+try{
+const r = await fetch(location.origin + '/api/auth/login', {
+method: 'POST',
+headers: {'Content-Type': 'application/json'},
+body: JSON.stringify({uid: this.loginForm.uid.toUpperCase(), password: this.loginForm.pwd})
+});
+const d = await r.json();
+if(d.success){
+this.token = d.data.token;
+this.user = d.data.user;
+this.isAdmin = this.user.role === 'admin';
+localStorage.setItem('t', this.token);
+localStorage.setItem('u', JSON.stringify(this.user));
+this.loggedIn = true;
+this.connectWS();
+this.loadGroups();
+}else{
+this.loginError = d.error || '登录失败';
+}
+}catch(e){
+this.loginError = '网络错误';
+}
+this.loginLoading = false;
+},
+
+logout(){
+this.api('/api/auth/logout', {method: 'POST'});
+this.clearAuth();
+},
+
+clearAuth(){
+localStorage.clear();
+this.token = '';
+this.user = null;
+this.loggedIn = false;
+this.isAdmin = false;
+if(this.ws) this.ws.close();
+},
+
+// 频道
+async loadGroups(){
+const d = await this.api('/api/groups');
+if(d.success) this.groups = d.data;
+},
+
+async enterChannel(){
+if(!this.channelInput) return;
+const d = await this.api('/api/groups/enter', {
+method: 'POST',
+body: JSON.stringify({name: this.channelInput})
+});
+if(d.success){
+this.channelInput = '';
+this.loadGroups();
+}else{
+alert(d.error || '进入失败');
+}
+},
+
+async joinGroup(id){
+const d = await this.api('/api/groups/' + id);
+if(d.success){
+this.currentGroup = d.data;
+this.loadMessages();
+}
+},
+
+leaveGroup(){
+this.currentGroup = null;
+this.messages = [];
+},
+
+// 消息
+async loadMessages(){
+if(!this.currentGroup) return;
+const d = await this.api('/api/messages/group/' + this.currentGroup.id);
+if(d.success){
+this.messages = d.data;
+this.$nextTick(() => this.scrollToBottom());
+}
+},
+
+async sendMessage(){
+if(!this.msgInput.trim() || !this.currentGroup) return;
+const d = await this.api('/api/messages', {
+method: 'POST',
+body: JSON.stringify({
+content: this.msgInput,
+groupId: this.currentGroup.id
+})
+});
+if(d.success){
+this.msgInput = '';
+}
+},
+
+renderMessage(m){
+if(m.msgType === 'image') return '<img src="' + m.content + '" style="max-width:200px;border-radius:8px">';
+return this.escapeHtml(m.content);
+},
+
+escapeHtml(t){
+const d = document.createElement('div');
+d.textContent = t;
+return d.innerHTML;
+},
+
+formatTime(t){
+return new Date(t).toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
+},
+
+scrollToBottom(){
+const el = document.getElementById('msgs');
+if(el) el.scrollTop = el.scrollHeight;
+},
+
+// WebSocket
+connectWS(){
+const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+this.ws = new WebSocket(proto + '//' + location.host + '/ws?token=' + this.token);
+this.ws.onmessage = (e) => {
+const m = JSON.parse(e.data);
+if(m.event === 'message' && m.data.groupId === this.currentGroup?.id){
+this.messages.push(m.data);
+this.$nextTick(() => this.scrollToBottom());
 }
 };
-})();
-// 注册Service Worker
-if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
+this.ws.onclose = () => setTimeout(() => this.connectWS(), 3000);
+},
+
+// 主题
+loadTheme(){
+this.theme = localStorage.getItem('theme') || 'dark';
+if(this.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+},
+
+toggleTheme(){
+this.theme = this.theme === 'dark' ? 'light' : 'dark';
+if(this.theme === 'light'){
+document.documentElement.setAttribute('data-theme', 'light');
+}else{
+document.documentElement.removeAttribute('data-theme');
+}
+localStorage.setItem('theme', this.theme);
+},
+
+// 用户菜单
+showUserMenu(e, userId, nickname){
+e.stopPropagation();
+this.userMenu = {
+show: true,
+x: Math.min(e.clientX, window.innerWidth - 200),
+y: Math.min(e.clientY, window.innerHeight - 200),
+userId: userId,
+nickname: nickname
+};
+},
+
+// 好友
+async addFriend(userId){
+const d = await this.api('/api/friends/' + userId, {method: 'POST'});
+alert(d.success ? '好友请求已发送' : (d.error || '添加失败'));
+this.userMenu.show = false;
+},
+
+// 私聊
+openDirectChat(userId, nickname){
+alert('私聊功能: ' + nickname);
+this.userMenu.show = false;
+},
+
+// 管理功能
+async loadUsers(){
+const d = await this.api('/api/admin/users');
+if(d.success) this.users = d.data;
+},
+
+async createUser(){
+if(!this.newUser.nickname || !this.newUser.password){
+alert('请填写昵称和密码');
+return;
+}
+const d = await this.api('/api/admin/users', {
+method: 'POST',
+body: JSON.stringify(this.newUser)
+});
+if(d.success){
+this.newUser = {uid: '', nickname: '', password: ''};
+this.loadUsers();
+}else{
+alert(d.error || '创建失败');
+}
+},
+
+async banUser(uid){
+if(!confirm('确定封禁该用户?')) return;
+const d = await this.api('/api/admin/users/' + uid + '/ban', {method: 'PUT'});
+alert(d.success ? '已封禁' : (d.error || '操作失败'));
+this.loadUsers();
+},
+
+async unbanUser(uid){
+const d = await this.api('/api/admin/users/' + uid + '/unban', {method: 'PUT'});
+alert(d.success ? '已解封' : (d.error || '操作失败'));
+this.loadUsers();
+},
+
+async muteUser(uid){
+const d = await this.api('/api/admin/users/' + uid + '/mute', {
+method: 'PUT',
+body: JSON.stringify({duration_minutes: 30})
+});
+alert(d.success ? '已禁言30分钟' : (d.error || '操作失败'));
+this.loadUsers();
+},
+
+async loadAllGroups(){
+const d = await this.api('/api/admin/groups');
+if(d.success) this.allGroups = d.data;
+},
+
+async deleteGroup(id){
+if(!confirm('确定删除该频道?')) return;
+const d = await this.api('/api/admin/groups/' + id, {method: 'DELETE'});
+if(d.success) this.loadAllGroups();
+},
+
+async loadSensitiveWords(){
+const d = await this.api('/api/admin/sensitive-words');
+if(d.success) this.sensitiveWords = d.data;
+},
+
+async addWord(){
+if(!this.newWord.word){
+alert('请输入敏感词');
+return;
+}
+const d = await this.api('/api/admin/sensitive-words', {
+method: 'POST',
+body: JSON.stringify(this.newWord)
+});
+if(d.success){
+this.newWord = {word: '', replacement: '***'};
+this.loadSensitiveWords();
+}else{
+alert(d.error || '添加失败');
+}
+},
+
+async deleteWord(id){
+const d = await this.api('/api/admin/sensitive-words/' + id, {method: 'DELETE'});
+if(d.success) this.loadSensitiveWords();
+},
+
+async loadStats(){
+const d = await this.api('/api/admin/statistics');
+if(d.success) this.stats = d.data;
+}
+}
+}
 </script>
 </body>
 </html>
@@ -1868,45 +679,18 @@ pub const MANIFEST_JSON: &str = r##"{
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
-  "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"}
   ]
 }"##;
 
 pub const SERVICE_WORKER_JS: &str = r##"const CACHE_NAME = 'arcanum-v1';
 const ASSETS = ['/', '/manifest.json'];
-
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
-});
-
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
-});
-
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))));
+self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))));
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetchPromise = fetch(e.request).then(response => {
-        if (response.ok && e.request.url.startsWith(location.origin)) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, responseClone));
-        }
-        return response;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
-  );
+  e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request)));
 });
 "##;
