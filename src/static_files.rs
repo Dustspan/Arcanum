@@ -239,6 +239,10 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 <button class="btn sm danger" @click="doDeleteGroup(g.id)">删除</button>
 </div>
 </div>
+<div class="card" v-if="allGroups.length === 0" style="text-align:center;color:var(--muted);font-size:13px">
+暂无频道数据<br>
+<small>请先在主页创建或进入频道</small>
+</div>
 </div>
 
 <!-- 敏感词管理 -->
@@ -378,10 +382,16 @@ async function api(path, options = {}) {
   if (token.value) headers['Authorization'] = 'Bearer ' + token.value;
   try {
     const r = await fetch(API + path, { ...options, headers });
-    return await r.json();
+    const text = await r.text();
+    console.log('API', path, 'status:', r.status, 'response:', text.substring(0, 200));
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return { success: false, error: 'Invalid JSON: ' + text.substring(0, 100) };
+    }
   } catch (e) {
     console.error('API Error:', e);
-    return { error: e.message };
+    return { success: false, error: e.message };
   }
 }
 
@@ -565,8 +575,18 @@ async function loadAllPermissions() {
 }
 
 async function loadUsers() {
-  const d = await api('/api/admin/users');
-  if (d.success) users.value = d.data;
+  console.log('loadUsers called');
+  try {
+    const d = await api('/api/admin/users');
+    console.log('loadUsers response:', d);
+    if (d.success) {
+      users.value = d.data;
+    } else {
+      console.error('loadUsers error:', d.error);
+    }
+  } catch (e) {
+    console.error('loadUsers exception:', e);
+  }
 }
 
 async function doCreateUser() {
@@ -613,8 +633,21 @@ async function doMuteUser(uid) {
 }
 
 async function loadAllGroups() {
-  const d = await api('/api/admin/groups');
-  if (d.success) allGroups.value = d.data;
+  console.log('loadAllGroups called, token:', token.value ? 'exists' : 'missing');
+  try {
+    const d = await api('/api/admin/groups');
+    console.log('loadAllGroups response:', d);
+    if (d.success) {
+      allGroups.value = d.data;
+      console.log('allGroups loaded:', allGroups.value.length, 'groups');
+    } else {
+      console.error('loadAllGroups error:', d.error);
+      alert('加载频道失败: ' + (d.error || '未知错误'));
+    }
+  } catch (e) {
+    console.error('loadAllGroups exception:', e);
+    alert('加载频道异常: ' + e.message);
+  }
 }
 
 async function doDeleteGroup(id) {
