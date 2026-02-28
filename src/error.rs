@@ -15,6 +15,12 @@ pub enum AppError {
     #[error("内部错误: {0}")] Internal(String),
 }
 
+impl From<anyhow::Error> for AppError {
+    fn from(err: anyhow::Error) -> Self {
+        AppError::Internal(err.to_string())
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message): (StatusCode, String) = match self {
