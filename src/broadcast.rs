@@ -43,13 +43,23 @@ impl BroadcastManager {
     
     /// 向用户发送消息
     pub fn broadcast_to_user(&self, user_id: &str, msg: WsMessage) -> Result<usize, broadcast::error::SendError<WsMessage>> {
-        let tx = self.get_or_create_user(user_id);
-        tx.send(msg)
+        // 先检查是否存在通道，避免创建无用通道
+        if let Some(tx) = self.users.get(user_id) {
+            tx.send(msg)
+        } else {
+            // 用户不在线，不创建通道，直接返回
+            Ok(0)
+        }
     }
     
     /// 订阅用户通知
     pub fn subscribe_user(&self, user_id: &str) -> broadcast::Receiver<WsMessage> {
         self.get_or_create_user(user_id).subscribe()
+    }
+    
+    /// 移除用户通道（用户断开连接时调用）
+    pub fn remove_user(&self, user_id: &str) {
+        self.users.remove(user_id);
     }
     
     /// 获取或创建频道的广播通道
@@ -86,9 +96,12 @@ impl BroadcastManager {
         self.global.subscribe()
     }
     
-    /// 清理空频道（可选，用于内存优化）
-    pub fn cleanup_empty_groups(&self) {
+    /// 清理空频道和无接收者的用户通道（定期调用）
+    pub fn cleanup(&self) {
+        // 清理没有接收者的频道
         self.groups.retain(|_, tx| tx.receiver_count() > 0);
+        // 清理没有接收者的用户通道
+        self.users.retain(|_, tx| tx.receiver_count() > 0);
     }
     
     /// 获取活跃频道数量
@@ -96,9 +109,19 @@ impl BroadcastManager {
         self.groups.len()
     }
     
+    /// 获取活跃用户通道数量
+    pub fn active_users(&self) -> usize {
+        self.users.len()
+    }
+    
     /// 获取频道订阅者数量
     pub fn subscriber_count(&self, group_id: &str) -> usize {
         self.groups.get(group_id).map(|tx| tx.receiver_count()).unwrap_or(0)
+    }
+    
+    /// 获取内存使用统计
+    pub fn stats(&self) -> (usize, usize) {
+        (self.groups.len(), self.users.len())
     }
 }
 

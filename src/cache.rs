@@ -12,21 +12,28 @@ pub struct UserPermissions {
     pub role: String,
 }
 
-/// 权限缓存管理器
+/// 权限缓存管理器（带大小限制）
 pub struct PermissionCache {
     /// user_id -> UserPermissions
     cache: Arc<RwLock<HashMap<String, UserPermissions>>>,
+    /// 最大缓存大小
+    max_size: usize,
 }
 
 impl PermissionCache {
     pub fn new() -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
+            max_size: 1000, // 最多缓存1000个用户
         }
     }
     
     /// 获取用户权限（优先从缓存读取）
-    pub async fn get_permissions(&self, pool: &SqlitePool, user_id: &str) -> Result<UserPermissions> {
+    pub async fn get_permissions(
+        &self, 
+        pool: &SqlitePool, 
+        user_id: &str
+    ) -> Result<UserPermissions> {
         // 先检查缓存
         {
             let cache = self.cache.read().await;
@@ -40,7 +47,11 @@ impl PermissionCache {
     }
     
     /// 从数据库加载权限并缓存
-    pub async fn load_from_db(&self, pool: &SqlitePool, user_id: &str) -> Result<UserPermissions> {
+    pub async fn load_from_db(
+        &self, 
+        pool: &SqlitePool, 
+        user_id: &str
+    ) -> Result<UserPermissions> {
         // 获取用户角色
         let role: Option<String> = sqlx::query_scalar("SELECT role FROM users WHERE id = ?")
             .bind(user_id)
@@ -71,9 +82,18 @@ impl PermissionCache {
         
         let perms = UserPermissions { permissions, role };
         
-        // 更新缓存
+        // 更新缓存（带大小限制）
         {
             let mut cache = self.cache.write().await;
+            
+            // 如果缓存已满，清理一半
+            if cache.len() >= self.max_size {
+                let keys: Vec<String> = cache.keys().take(self.max_size / 2).cloned().collect();
+                for key in keys {
+                    cache.remove(&key);
+                }
+            }
+            
             cache.insert(user_id.to_string(), perms.clone());
         }
         
@@ -81,7 +101,12 @@ impl PermissionCache {
     }
     
     /// 检查用户是否拥有指定权限
-    pub async fn has_permission(&self, pool: &SqlitePool, user_id: &str, permission_name: &str) -> Result<bool> {
+    pub async fn has_permission(
+        &self, 
+        pool: &SqlitePool, 
+        user_id: &str, 
+        permission_name: &str
+    ) -> Result<bool> {
         let perms = self.get_permissions(pool, user_id).await?;
         
         if perms.role == "admin" {
@@ -120,6 +145,7 @@ impl Clone for PermissionCache {
     fn clone(&self) -> Self {
         Self {
             cache: self.cache.clone(),
+            max_size: self.max_size,
         }
     }
 }

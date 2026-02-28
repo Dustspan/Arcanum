@@ -2,8 +2,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use axum::{routing::{get, post, delete, put}, Router, response::Html};
 use sqlx::SqlitePool;
-use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer, services::ServeDir};
+use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer, services::ServeDir, timeout::TimeoutLayer};
 use handlers::health::SystemStats;
+use tokio::signal;
 
 mod config; mod db; mod error; mod handlers; mod models; mod utils; mod ws; mod static_files; mod storage; mod broadcast; mod cache;
 
@@ -21,7 +22,9 @@ pub struct AppStateInner {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
-    tracing_subscriber::fmt().with_env_filter(tracing_subscriber::EnvFilter::from_default_env()).init();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
     
     let config = config::Config::from_env()?;
     let db = db::init_db(&config.database_url).await?;
@@ -40,6 +43,30 @@ async fn main() -> anyhow::Result<()> {
         storage,
         cache: permission_cache,
         stats: system_stats,
+    });
+    
+    // 启动后台清理任务
+    let state_clone = state.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // 每5分钟
+        loop {
+            interval.tick().await;
+            
+            // 清理广播通道
+            state_clone.broadcast.cleanup();
+            
+            // 清理过期数据（每小时执行一次）
+            let hour_interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
+            tokio::select! {
+                _ = hour_interval.tick() => {
+                    if let Err(e) = db::cleanup_expired_data(&state_clone.db).await {
+                        tracing::warn!("清理过期数据失败: {}", e);
+                    } else {
+                        tracing::info!("已清理过期数据");
+                    }
+                }
+            }
+        }
     });
     
     // 静态文件服务
@@ -132,6 +159,7 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/files", files_service)
         .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any))
         .layer(TraceLayer::new_for_http())
+        .layer(TimeoutLayer::new(std::time::Duration::from_secs(30))) // 请求超时30秒
         .with_state(state);
     
     let addr: SocketAddr = format!("0.0.0.0:{}", std::env::var("PORT").unwrap_or_else(|_| "3000".to_string())).parse()?;
@@ -139,6 +167,39 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Data directory: {}", std::env::var("DATA_DIR").unwrap_or_else(|_| "./data".to_string()));
     
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    
+    // 优雅关闭
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+    
+    tracing::info!("服务器已关闭");
     Ok(())
+}
+
+/// 优雅关闭信号处理
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("无法安装Ctrl+C处理器");
+    };
+    
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("无法安装信号处理器")
+            .recv()
+            .await;
+    };
+    
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+    
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+    
+    tracing::info!("收到关闭信号，正在优雅关闭...");
 }

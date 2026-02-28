@@ -223,6 +223,9 @@ async fn handle(socket: WebSocket, state: AppState, claims: Claims) {
     sqlx::query("UPDATE users SET online = 0 WHERE id = ?")
         .bind(&user_id).execute(&state.db).await.ok();
     
+    // 清理用户的广播通道
+    state.broadcast.remove_user(&user_id);
+    
     tracing::info!("WS disconnected: {}", nickname);
 }
 
