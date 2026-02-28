@@ -119,6 +119,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
 .stat-value{font-size:24px;font-weight:700;color:var(--accent)}
 .stat-label{font-size:11px;color:var(--muted);margin-top:4px}
+.storage-bar{width:100%;height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin:8px 0}
+.storage-bar-fill{height:100%;background:var(--accent);transition:width .3s}
+.storage-bar-fill.warn{background:var(--warn)}
+.storage-bar-fill.error{background:var(--error)}
+.storage-info{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -161,6 +166,7 @@ Vue.createApp({
       allGroups: [],
       words: [],
       stats: {},
+      storage: {},
       newUser: { uid: '', nickname: '', password: '' },
       createUserLoading: false,
       newGroup: { name: '' },
@@ -191,6 +197,16 @@ Vue.createApp({
       if (this.typingUsers.length === 0) return '';
       if (this.typingUsers.length === 1) return this.typingUsers[0] + ' 正在输入...';
       return this.typingUsers.slice(0, 2).join(', ') + ' 正在输入...';
+    },
+    storagePercent() {
+      if (!this.storage?.storage?.usagePercent) return 0;
+      return parseFloat(this.storage.storage.usagePercent) || 0;
+    },
+    storageBarClass() {
+      const p = this.storagePercent;
+      if (p > 90) return 'error';
+      if (p > 70) return 'warn';
+      return '';
     }
   },
   methods: {
@@ -210,11 +226,9 @@ Vue.createApp({
         try {
           return JSON.parse(text);
         } catch (e) {
-          console.error('API返回非JSON:', text.substring(0, 200));
           return { success: false, error: '服务器返回格式错误' };
         }
       } catch (e) {
-        console.error('API请求失败:', e);
         return { success: false, error: '网络错误' };
       }
     },
@@ -396,7 +410,6 @@ Vue.createApp({
       setTimeout(() => { this.showUploadProgress = false; }, 500);
       e.target.value = '';
     },
-    // 撤回消息
     async recallMessage(msg) {
       if (!confirm('确定撤回该消息?')) return;
       const d = await this.api('/api/messages/' + msg.id + '/recall', { method: 'POST' });
@@ -407,12 +420,11 @@ Vue.createApp({
         alert(d.error || '撤回失败');
       }
     },
-    // 判断消息是否可以撤回（2分钟内）
     canRecall(msg) {
       if (msg.senderId !== this.user.id) return false;
       const msgTime = new Date(msg.createdAt).getTime();
       const now = Date.now();
-      return (now - msgTime) < 2 * 60 * 1000; // 2分钟内
+      return (now - msgTime) < 2 * 60 * 1000;
     },
     renderMsg(m) {
       if (m.msgType === 'image') {
@@ -574,7 +586,24 @@ Vue.createApp({
       if (d.success) { this.newWord = { word: '', replacement: '***' }; this.loadWords(); } else alert(d.error || '失败');
     },
     async doDeleteWord(id) { const d = await this.api('/api/admin/sensitive-words/' + id, { method: 'DELETE' }); if (d.success) this.loadWords(); },
-    async loadStats() { const d = await this.api('/api/admin/statistics'); if (d.success) this.stats = d.data || {}; },
+    async loadStats() { 
+      const d = await this.api('/api/admin/statistics'); 
+      if (d.success) this.stats = d.data || {}; 
+    },
+    async loadStorage() {
+      const d = await this.api('/api/admin/storage');
+      if (d.success) this.storage = d.data || {};
+    },
+    async doCleanup() {
+      if (!confirm('确定手动清理过期数据?')) return;
+      const d = await this.api('/api/admin/cleanup', { method: 'POST' });
+      if (d.success) {
+        alert('清理完成: 消息' + (d.data.messagesDeleted || 0) + '条, 文件' + (d.data.orphanedFilesDeleted || 0) + '个');
+        this.loadStorage();
+      } else {
+        alert(d.error || '清理失败');
+      }
+    },
     openPermModal(u) { this.permTarget = u; this.permTargetPerms = [...(u.permissions || [])]; this.showPermModal = true; },
     togglePerm(name) { const idx = this.permTargetPerms.indexOf(name); if (idx >= 0) this.permTargetPerms.splice(idx, 1); else this.permTargetPerms.push(name); },
     async savePerms() {
@@ -613,7 +642,13 @@ Vue.createApp({
     }
   },
   watch: {
-    msgInput(newVal, oldVal) { if (this.currentGroup && newVal !== oldVal) this.sendTypingStatus(newVal.length > 0); }
+    msgInput(newVal, oldVal) { if (this.currentGroup && newVal !== oldVal) this.sendTypingStatus(newVal.length > 0); },
+    adminTab(newVal) {
+      if (newVal === 'stats') {
+        this.loadStats();
+        this.loadStorage();
+      }
+    }
   },
   template: `
 <div class="container" @click="closeUserMenu">
@@ -738,7 +773,6 @@ Vue.createApp({
               <div v-html="renderMsg(m)"></div>
               <div class="msg-time">{{formatTime(m.createdAt)}}</div>
             </div>
-            <!-- 撤回按钮：自己的消息且在2分钟内 -->
             <div class="msg-actions" v-if="m.senderId === user.id && canRecall(m)">
               <button class="msg-action danger" @click="recallMessage(m)">撤回</button>
             </div>
@@ -771,7 +805,7 @@ Vue.createApp({
           <button class="admin-tab" :class="{active: adminTab === 'users'}" @click="adminTab = 'users'; loadUsers()">👥 用户</button>
           <button class="admin-tab" :class="{active: adminTab === 'groups'}" @click="adminTab = 'groups'; loadAllGroups()">💬 频道</button>
           <button class="admin-tab" :class="{active: adminTab === 'words'}" @click="adminTab = 'words'; loadWords()">🚫 敏感词</button>
-          <button class="admin-tab" :class="{active: adminTab === 'stats'}" @click="adminTab = 'stats'; loadStats()">📊 统计</button>
+          <button class="admin-tab" :class="{active: adminTab === 'stats'}" @click="adminTab = 'stats'">📊 统计</button>
         </div>
         <div class="admin-section" :class="{active: adminTab === 'users'}">
           <div class="card" v-if="hasPerm('user_create')">
@@ -822,6 +856,55 @@ Vue.createApp({
             <div class="stat-card"><div class="stat-value">{{stats.users?.online || 0}}</div><div class="stat-label">在线用户</div></div>
             <div class="stat-card"><div class="stat-value">{{stats.groups?.total || 0}}</div><div class="stat-label">频道总数</div></div>
             <div class="stat-card"><div class="stat-value">{{stats.messages?.total || 0}}</div><div class="stat-label">消息总数</div></div>
+          </div>
+          
+          <!-- 存储信息 -->
+          <div class="card" v-if="storage.storage" style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-weight:500">💾 存储使用</span>
+              <span class="badge" :class="storagePercent > 90 ? 'error' : (storagePercent > 70 ? 'warn' : 'success')">{{storage.storage.usagePercent}}</span>
+            </div>
+            <div class="storage-bar">
+              <div class="storage-bar-fill" :class="storageBarClass" :style="{width: storagePercent + '%'}"></div>
+            </div>
+            <div class="storage-info">
+              <span>已用: {{storage.storage.total}}</span>
+              <span>可用: {{storage.storage.available}}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;font-size:12px">
+              <div style="text-align:center">
+                <div style="color:var(--accent)">{{storage.storage.breakdown?.images || '0 B'}}</div>
+                <div style="color:var(--muted)">图片</div>
+              </div>
+              <div style="text-align:center">
+                <div style="color:var(--accent)">{{storage.storage.breakdown?.files || '0 B'}}</div>
+                <div style="color:var(--muted)">文件</div>
+              </div>
+              <div style="text-align:center">
+                <div style="color:var(--accent)">{{storage.storage.breakdown?.avatars || '0 B'}}</div>
+                <div style="color:var(--muted)">头像</div>
+              </div>
+            </div>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
+                📁 文件数: {{storage.storage.filesCount || 0}} / 1000
+              </div>
+              <div style="font-size:11px;color:var(--muted)">
+                📋 消息保留: {{storage.limits?.messageRetentionDays || 30}}天 | 置顶: {{storage.limits?.pinnedMessageRetentionDays || 90}}天
+              </div>
+            </div>
+            <button class="btn sm full" style="margin-top:12px" @click="doCleanup">🗑️ 手动清理</button>
+          </div>
+          
+          <!-- 数据库信息 -->
+          <div class="card" v-if="storage.database" style="margin-top:8px">
+            <div style="font-weight:500;margin-bottom:8px">📊 数据库</div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:12px">
+              <div>用户: {{storage.database.users || 0}}</div>
+              <div>频道: {{storage.database.groups || 0}}</div>
+              <div>消息: {{storage.database.messages || 0}}</div>
+              <div>私聊: {{storage.database.directMessages || 0}}</div>
+            </div>
           </div>
         </div>
       </div>
