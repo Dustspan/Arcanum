@@ -9,7 +9,6 @@ use crate::{
 
 // 离线消息限制
 const MAX_OFFLINE_MESSAGES_PER_USER: i64 = 100;
-const OFFLINE_MESSAGE_EXPIRE_DAYS: i64 = 7;
 
 /// 发送私聊消息
 pub async fn send_direct_message(
@@ -32,21 +31,55 @@ pub async fn send_direct_message(
     .fetch_optional(&state.db)
     .await?;
     
-    if receiver_info.is_none() {
-        return Err(crate::error::AppError::BadRequest("用户不存在".to_string()));
-    }
-    
-    let (receiver_id, is_online) = receiver_info.unwrap();
+    let (receiver_id, is_online) = match receiver_info {
+        Some(info) => info,
+        None => return Err(crate::error::AppError::BadRequest("用户不存在".to_string())),
+    };
     
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
     let msg_type = req.msg_type.clone().unwrap_or_else(|| "text".to_string());
     
+    // 获取发送者头像
     let avatar: Option<String> = sqlx::query_scalar("SELECT avatar FROM users WHERE id = ?")
         .bind(&claims.sub)
         .fetch_optional(&state.db)
         .await?
         .flatten();
+    
+    // 【关键修复】无论用户是否在线，都存储消息到数据库
+    // 检查离线消息数量限制
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM direct_messages WHERE receiver_id = ? AND read = 0"
+    )
+    .bind(&receiver_id)
+    .fetch_one(&state.db)
+    .await?;
+    
+    if count >= MAX_OFFLINE_MESSAGES_PER_USER {
+        // 清理最旧的消息
+        sqlx::query(
+            "DELETE FROM direct_messages WHERE receiver_id = ? AND read = 0 ORDER BY created_at ASC LIMIT 10"
+        )
+        .bind(&receiver_id)
+        .execute(&state.db)
+        .await?;
+    }
+    
+    // 存储消息（无论用户是否在线）
+    sqlx::query(
+        "INSERT INTO direct_messages (id, sender_id, receiver_id, content, type, file_name, file_size, read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)"
+    )
+    .bind(&id)
+    .bind(&claims.sub)
+    .bind(&receiver_id)
+    .bind(&req.content)
+    .bind(&msg_type)
+    .bind(&req.file_name)
+    .bind(req.file_size.unwrap_or(0))
+    .bind(&now)
+    .execute(&state.db)
+    .await?;
     
     let msg_data = json!({
         "id": id,
@@ -61,48 +94,14 @@ pub async fn send_direct_message(
         "createdAt": now
     });
     
+    // 如果接收者在线，尝试实时推送
     if is_online == 1 {
-        // 接收者在线，直接推送
         let _ = state.broadcast.broadcast_to_user(
             &receiver_id, WsMessage {
                 event: "direct_message".into(),
                 data: msg_data.clone()
             }
         );
-    } else {
-        // 接收者离线，存储消息
-        // 先检查离线消息数量限制
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM direct_messages WHERE receiver_id = ? AND read = 0"
-        )
-        .bind(&receiver_id)
-        .fetch_one(&state.db)
-        .await?;
-        
-        if count >= MAX_OFFLINE_MESSAGES_PER_USER {
-            // 清理最旧的消息
-            sqlx::query(
-                "DELETE FROM direct_messages WHERE receiver_id = ? AND read = 0 ORDER BY created_at ASC LIMIT 10"
-            )
-            .bind(&receiver_id)
-            .execute(&state.db)
-            .await?;
-        }
-        
-        // 存储离线消息
-        sqlx::query(
-            "INSERT INTO direct_messages (id, sender_id, receiver_id, content, type, file_name, file_size, read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)"
-        )
-        .bind(&id)
-        .bind(&claims.sub)
-        .bind(&receiver_id)
-        .bind(&req.content)
-        .bind(&msg_type)
-        .bind(&req.file_name)
-        .bind(req.file_size.unwrap_or(0))
-        .bind(&now)
-        .execute(&state.db)
-        .await?;
     }
     
     // 同时发回给发送者（用于多设备同步）
@@ -372,16 +371,4 @@ pub async fn get_friend_requests(
             "avatar": r.3
         })).collect::<Vec<_>>()
     })))
-}
-
-/// 清理过期的离线消息（可由定时任务调用）
-pub async fn cleanup_expired_messages(pool: &sqlx::SqlitePool) -> anyhow::Result<()> {
-    let expire_date = chrono::Utc::now() - chrono::Duration::days(OFFLINE_MESSAGE_EXPIRE_DAYS);
-    
-    sqlx::query("DELETE FROM direct_messages WHERE created_at < ? AND read = 1")
-        .bind(expire_date.to_rfc3339())
-        .execute(pool)
-        .await?;
-    
-    Ok(())
 }

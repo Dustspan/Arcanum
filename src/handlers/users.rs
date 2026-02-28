@@ -4,8 +4,7 @@ use sqlx::SqlitePool;
 use crate::{
     error::{Result, AppError},
     handlers::auth::{get_claims, get_claims_full},
-    models::User,
-    utils::{check_permission, hash_password},
+    utils::{check_permission, hash_password, get_user_permissions},
     AppState
 };
 
@@ -63,10 +62,33 @@ pub async fn list_users(
     let claims = get_claims(&headers, &state.config)?;
     check_permission(&claims, "user_view")?;
     
-    let users: Vec<User> = sqlx::query_as("SELECT * FROM users ORDER BY created_at DESC")
-        .fetch_all(&state.db).await?;
+    // 获取用户列表
+    let users: Vec<(String, String, String, Option<String>, String, String, Option<String>, i64, i64, Option<String>, String)> = sqlx::query_as(
+        "SELECT id, uid, nickname, avatar, role, account_status, muted_until, token_version, online, last_ip, created_at FROM users ORDER BY created_at DESC"
+    )
+    .fetch_all(&state.db).await?;
     
-    Ok(Json(json!({"success": true, "data": users})))
+    // 为每个用户获取权限
+    let mut result = Vec::new();
+    for u in users {
+        let permissions = get_user_permissions(&state.db, &u.0).await?;
+        result.push(json!({
+            "id": u.0,
+            "uid": u.1,
+            "nickname": u.2,
+            "avatar": u.3,
+            "role": u.4,
+            "status": u.5,
+            "mutedUntil": u.6,
+            "tokenVersion": u.7,
+            "online": u.8 == 1,
+            "lastIp": u.9,
+            "createdAt": u.10,
+            "permissions": permissions
+        }));
+    }
+    
+    Ok(Json(json!({"success": true, "data": result})))
 }
 
 pub async fn delete_user(
@@ -390,13 +412,31 @@ pub async fn get_user_info(
 ) -> Result<Json<serde_json::Value>> {
     let _claims = get_claims(&headers, &state.config)?;
     
-    let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE id = ? OR uid = ?")
-        .bind(&id).bind(&id)
-        .fetch_optional(&state.db)
-        .await?;
+    let user: Option<(String, String, String, Option<String>, String, String, Option<String>, i64, i64, Option<String>, String)> = sqlx::query_as(
+        "SELECT id, uid, nickname, avatar, role, account_status, muted_until, token_version, online, last_ip, created_at FROM users WHERE id = ? OR uid = ?"
+    )
+    .bind(&id).bind(&id)
+    .fetch_optional(&state.db)
+    .await?;
     
     match user {
-        Some(u) => Ok(Json(json!({"success": true, "data": u}))),
+        Some(u) => {
+            let permissions = get_user_permissions(&state.db, &u.0).await?;
+            Ok(Json(json!({
+                "success": true,
+                "data": {
+                    "id": u.0,
+                    "uid": u.1,
+                    "nickname": u.2,
+                    "avatar": u.3,
+                    "role": u.4,
+                    "status": u.5,
+                    "mutedUntil": u.6,
+                    "online": u.8 == 1,
+                    "permissions": permissions
+                }
+            })))
+        }
         None => Err(AppError::NotFound),
     }
 }

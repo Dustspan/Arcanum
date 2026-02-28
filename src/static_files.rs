@@ -818,10 +818,10 @@ Vue.createApp({
             <div class="item-header"><span class="item-title">{{u.nickname}} <span class="badge" :class="u.status === 'banned' ? 'error' : (u.online ? 'success' : '')">{{u.status === 'banned' ? '已封禁' : (u.online ? '在线' : '离线')}}</span><span v-if="u.role === 'admin'" class="badge warn">管理员</span></span></div>
             <div class="item-info">{{u.uid}}</div>
             <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-              <button class="btn sm" v-if="hasPerm('user_ban') && u.status !== 'banned' && u.role !== 'admin'" @click="doBanUser(u.uid)">封禁</button>
+              <button class="btn sm" v-if="hasPerm('user_ban') && u.status !== 'banned' && u.role !== 'admin' && u.id !== user.id" @click="doBanUser(u.uid)">封禁</button>
               <button class="btn sm" v-if="hasPerm('user_ban') && u.status === 'banned'" @click="doUnbanUser(u.uid)">解封</button>
-              <button class="btn sm" v-if="hasPerm('user_mute') && u.role !== 'admin'" @click="doMuteUser(u.uid)">禁言</button>
-              <button class="btn sm" v-if="hasPerm('permission_grant') && u.role !== 'admin'" @click="openPermModal(u)">权限</button>
+              <button class="btn sm" v-if="hasPerm('user_mute') && u.role !== 'admin' && u.id !== user.id" @click="doMuteUser(u.uid)">禁言</button>
+              <button class="btn sm" v-if="hasPerm('permission_grant') && u.role !== 'admin' && u.id !== user.id" @click="openPermModal(u)">权限</button>
             </div>
           </div>
         </div>
