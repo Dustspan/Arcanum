@@ -1,8 +1,9 @@
-use axum::{extract::State, Json};
+use axum::{extract::State, Json, http::HeaderMap};
 use serde_json::json;
 use sqlx::SqlitePool;
 use std::time::Instant;
 use crate::AppState;
+use crate::db;
 
 pub struct SystemStats {
     pub start_time: Instant,
@@ -52,7 +53,8 @@ pub async fn health_check(State(state): State<AppState>) -> Json<serde_json::Val
     // 广播系统状态
     components.insert("broadcast".to_string(), json!({
         "status": "ok",
-        "active_groups": state.broadcast.active_groups()
+        "active_groups": state.broadcast.active_groups(),
+        "active_users": state.broadcast.active_users()
     }));
     
     // 缓存状态
@@ -61,6 +63,26 @@ pub async fn health_check(State(state): State<AppState>) -> Json<serde_json::Val
         "status": "ok",
         "size": cache_size
     }));
+    
+    // 存储状态
+    let storage_status = match state.storage.get_storage_usage() {
+        Ok(usage) => {
+            if usage.usage_percent() > 90.0 {
+                status = "degraded";
+            }
+            json!({
+                "status": if usage.usage_percent() > 90.0 { "warning" } else { "ok" },
+                "usage_percent": format!("{:.1}%", usage.usage_percent()),
+                "used": usage.format_size(usage.total_size),
+                "available": usage.format_size(usage.available)
+            })
+        }
+        Err(_) => {
+            status = "degraded";
+            json!({"status": "error"})
+        }
+    };
+    components.insert("storage".to_string(), storage_status);
     
     // 系统信息
     let uptime = state.stats.uptime_secs();
@@ -99,11 +121,10 @@ async fn check_database(pool: &SqlitePool) -> &'static str {
 /// 获取系统统计数据
 pub async fn get_statistics(
     State(state): State<AppState>,
-    headers: axum::http::HeaderMap
+    headers: HeaderMap
 ) -> crate::error::Result<Json<serde_json::Value>> {
     let claims = crate::handlers::auth::get_claims_full(&headers, &state).await?;
     
-    // 允许管理员或有admin权限的用户访问
     if claims.role != "admin" {
         crate::utils::check_permission(&claims, "admin")?;
     }
@@ -144,6 +165,9 @@ pub async fn get_statistics(
     let total_friendships: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM friendships WHERE status = 'accepted'")
         .fetch_one(&state.db).await?;
     
+    // 存储使用情况
+    let storage_usage = state.storage.get_storage_usage().ok();
+    
     let uptime = state.stats.uptime_secs();
     
     Ok(Json(json!({
@@ -170,10 +194,105 @@ pub async fn get_statistics(
                 "messages": total_direct_messages,
                 "friendships": total_friendships
             },
+            "storage": storage_usage.map(|s| json!({
+                "totalSize": s.total_size,
+                "imagesSize": s.images_size,
+                "filesSize": s.files_size,
+                "avatarsSize": s.avatars_size,
+                "maxSize": s.max_size,
+                "available": s.available,
+                "usagePercent": s.usage_percent(),
+                "filesCount": s.files_count
+            })),
             "system": {
                 "uptime": uptime,
-                "activeBroadcastGroups": state.broadcast.active_groups()
+                "activeBroadcastGroups": state.broadcast.active_groups(),
+                "activeBroadcastUsers": state.broadcast.active_users(),
+                "cacheSize": state.cache.cache_size().await
             }
+        }
+    })))
+}
+
+/// 获取存储详情（管理员）
+pub async fn get_storage_info(
+    State(state): State<AppState>,
+    headers: HeaderMap
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let claims = crate::handlers::auth::get_claims_full(&headers, &state).await?;
+    
+    if claims.role != "admin" {
+        crate::utils::check_permission(&claims, "admin")?;
+    }
+    
+    let usage = state.storage.get_storage_usage()?;
+    let db_stats = db::get_db_stats(&state.db).await?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "storage": {
+                "total": usage.format_size(usage.total_size),
+                "max": usage.format_size(usage.max_size),
+                "available": usage.format_size(usage.available),
+                "usagePercent": format!("{:.1}%", usage.usage_percent()),
+                "filesCount": usage.files_count,
+                "breakdown": {
+                    "images": usage.format_size(usage.images_size),
+                    "files": usage.format_size(usage.files_size),
+                    "avatars": usage.format_size(usage.avatars_size)
+                }
+            },
+            "database": {
+                "users": db_stats.users,
+                "groups": db_stats.groups,
+                "messages": db_stats.messages,
+                "directMessages": db_stats.direct_messages,
+                "files": db_stats.files,
+                "totalFileSize": db_stats.total_file_size
+            },
+            "limits": {
+                "maxFileSize": "5MB",
+                "maxTotalStorage": "200MB",
+                "messageRetentionDays": db::MESSAGE_RETENTION_DAYS,
+                "pinnedMessageRetentionDays": db::PINNED_MESSAGE_RETENTION_DAYS,
+                "maxMessagesPerGroup": db::MAX_MESSAGES_PER_GROUP
+            }
+        }
+    })))
+}
+
+/// 手动触发清理（管理员）
+pub async fn trigger_cleanup(
+    State(state): State<AppState>,
+    headers: HeaderMap
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let claims = crate::handlers::auth::get_claims_full(&headers, &state).await?;
+    
+    if claims.role != "admin" {
+        crate::utils::check_permission(&claims, "admin")?;
+    }
+    
+    let stats = db::cleanup_expired_data(&state.db).await?;
+    
+    // 清理孤立文件
+    let files: Vec<String> = sqlx::query_scalar(
+        "SELECT content FROM messages WHERE type IN ('image', 'file')"
+    )
+    .fetch_all(&state.db)
+    .await?;
+    
+    let orphaned = state.storage.cleanup_orphaned_files(&files)?;
+    
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "messagesDeleted": stats.messages_deleted,
+            "pinnedDeleted": stats.pinned_deleted,
+            "overflowDeleted": stats.overflow_deleted,
+            "directDeleted": stats.direct_deleted,
+            "logsDeleted": stats.logs_deleted,
+            "orphanedFilesDeleted": orphaned
         }
     })))
 }

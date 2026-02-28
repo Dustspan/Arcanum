@@ -48,21 +48,47 @@ async fn main() -> anyhow::Result<()> {
     // 启动后台清理任务
     let state_clone = state.clone();
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // 每5分钟
+        // 每5分钟清理广播通道
+        let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(300));
+        // 每小时清理过期数据
+        let mut hourly_interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
+        
         loop {
-            interval.tick().await;
-            
-            // 清理广播通道
-            state_clone.broadcast.cleanup();
-            
-            // 清理过期数据（每小时执行一次）
-            let hour_interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
             tokio::select! {
-                _ = hour_interval.tick() => {
-                    if let Err(e) = db::cleanup_expired_data(&state_clone.db).await {
-                        tracing::warn!("清理过期数据失败: {}", e);
-                    } else {
-                        tracing::info!("已清理过期数据");
+                _ = cleanup_interval.tick() => {
+                    state_clone.broadcast.cleanup();
+                }
+                _ = hourly_interval.tick() => {
+                    // 清理过期数据
+                    match db::cleanup_expired_data(&state_clone.db).await {
+                        Ok(stats) => {
+                            tracing::info!(
+                                "定时清理完成: 消息{}条, 私聊{}条, 日志{}条",
+                                stats.messages_deleted + stats.pinned_deleted + stats.overflow_deleted,
+                                stats.direct_deleted,
+                                stats.logs_deleted
+                            );
+                        }
+                        Err(e) => {
+                            tracing::warn!("定时清理失败: {}", e);
+                        }
+                    }
+                    
+                    // 清理孤立文件
+                    let files: Vec<String> = match sqlx::query_scalar(
+                        "SELECT content FROM messages WHERE type IN ('image', 'file')"
+                    )
+                    .fetch_all(&state_clone.db)
+                    .await
+                    {
+                        Ok(f) => f,
+                        Err(_) => continue,
+                    };
+                    
+                    if let Ok(orphaned) = state_clone.storage.cleanup_orphaned_files(&files) {
+                        if orphaned > 0 {
+                            tracing::info!("清理孤立文件: {}个", orphaned);
+                        }
                     }
                 }
             }
@@ -128,6 +154,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/admin/groups", get(handlers::groups::list_all_groups))
         .route("/api/admin/groups/:id", delete(handlers::groups::delete_group))
         .route("/api/admin/statistics", get(handlers::health::get_statistics))
+        .route("/api/admin/storage", get(handlers::health::get_storage_info))
+        .route("/api/admin/cleanup", post(handlers::health::trigger_cleanup))
         // 消息路由
         .route("/api/messages", post(handlers::messages::send_message))
         .route("/api/messages/group/:id", get(handlers::messages::get_messages))

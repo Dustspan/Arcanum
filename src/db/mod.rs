@@ -2,22 +2,26 @@ use sqlx::{query, query_as, SqlitePool, sqlite::SqlitePoolOptions};
 use crate::config::Config;
 use crate::utils;
 
+// 消息保留策略配置
+pub const MESSAGE_RETENTION_DAYS: i64 = 30;        // 普通消息保留30天
+pub const PINNED_MESSAGE_RETENTION_DAYS: i64 = 90; // 置顶消息保留90天
+pub const MAX_MESSAGES_PER_GROUP: i64 = 5000;      // 每个频道最多5000条消息
+
 /// 初始化数据库连接池（优化配置）
 pub async fn init_db(url: &str) -> anyhow::Result<SqlitePool> {
-    // Railway免费套餐：512MB内存，需要保守配置
     let pool = SqlitePoolOptions::new()
-        .max_connections(5)           // 最大连接数
-        .min_connections(1)           // 最小连接数
-        .acquire_timeout(std::time::Duration::from_secs(10))  // 获取连接超时
-        .idle_timeout(Some(std::time::Duration::from_secs(300)))  // 空闲超时5分钟
-        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 连接最大生命周期30分钟
+        .max_connections(5)
+        .min_connections(1)
+        .acquire_timeout(std::time::Duration::from_secs(10))
+        .idle_timeout(Some(std::time::Duration::from_secs(300)))
+        .max_lifetime(Some(std::time::Duration::from_secs(1800)))
         .connect(url)
         .await?;
     
     // 启用SQLite优化
     sqlx::query("PRAGMA journal_mode = WAL").execute(&pool).await.ok();
     sqlx::query("PRAGMA synchronous = NORMAL").execute(&pool).await.ok();
-    sqlx::query("PRAGMA cache_size = -64000").execute(&pool).await.ok(); // 64MB缓存
+    sqlx::query("PRAGMA cache_size = -64000").execute(&pool).await.ok();
     sqlx::query("PRAGMA temp_store = MEMORY").execute(&pool).await.ok();
     
     Ok(pool)
@@ -42,29 +46,22 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
         )
     "#).execute(pool).await?;
     
-    // 用户表索引
     query("CREATE INDEX IF NOT EXISTS idx_users_uid ON users(uid)").execute(pool).await.ok();
     query("CREATE INDEX IF NOT EXISTS idx_users_online ON users(online)").execute(pool).await.ok();
     query("CREATE INDEX IF NOT EXISTS idx_users_status ON users(account_status)").execute(pool).await.ok();
     
-    // 添加 avatar 和 muted_until 列（如果不存在）
     query("ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT ''").execute(pool).await.ok();
     query("ALTER TABLE users ADD COLUMN muted_until TEXT").execute(pool).await.ok();
     
     // 频道表
     query("CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, cipher_hash TEXT NOT NULL, owner_id TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)").execute(pool).await?;
-    
-    // 频道表索引
     query("CREATE INDEX IF NOT EXISTS idx_groups_owner ON groups(owner_id)").execute(pool).await.ok();
     
-    // 添加频道描述和公告列
     query("ALTER TABLE groups ADD COLUMN description TEXT").execute(pool).await.ok();
     query("ALTER TABLE groups ADD COLUMN announcement TEXT").execute(pool).await.ok();
     
     // 频道成员表
     query("CREATE TABLE IF NOT EXISTS group_members (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, user_id TEXT NOT NULL, joined_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(group_id, user_id))").execute(pool).await?;
-    
-    // 频道成员表索引
     query("CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id)").execute(pool).await.ok();
     query("CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id)").execute(pool).await.ok();
     
@@ -83,19 +80,13 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
         )
     "#).execute(pool).await?;
     
-    // 消息表索引（关键优化）
     query("CREATE INDEX IF NOT EXISTS idx_messages_group ON messages(group_id, created_at DESC)").execute(pool).await.ok();
     query("CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)").execute(pool).await.ok();
     query("CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at)").execute(pool).await.ok();
     
-    // 添加文件相关列
     query("ALTER TABLE messages ADD COLUMN file_name TEXT").execute(pool).await.ok();
     query("ALTER TABLE messages ADD COLUMN file_size INTEGER DEFAULT 0").execute(pool).await.ok();
-    
-    // 添加消息引用列
     query("ALTER TABLE messages ADD COLUMN reply_to TEXT").execute(pool).await.ok();
-    
-    // 添加消息置顶列
     query("ALTER TABLE messages ADD COLUMN pinned INTEGER DEFAULT 0").execute(pool).await.ok();
     
     // 消息提及表
@@ -111,7 +102,6 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
             UNIQUE(message_id, user_id)
         )
     "#).execute(pool).await?;
-    
     query("CREATE INDEX IF NOT EXISTS idx_mentions_user ON mentions(user_id, read)").execute(pool).await.ok();
     
     // 消息已读状态表
@@ -148,7 +138,6 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
             UNIQUE(user_id, permission_id)
         )
     "#).execute(pool).await?;
-    
     query("CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id)").execute(pool).await.ok();
     
     // 私聊消息表
@@ -165,8 +154,6 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     "#).execute(pool).await?;
-    
-    // 私聊消息索引（关键优化）
     query("CREATE INDEX IF NOT EXISTS idx_direct_receiver ON direct_messages(receiver_id, read, created_at)").execute(pool).await.ok();
     query("CREATE INDEX IF NOT EXISTS idx_direct_sender ON direct_messages(sender_id)").execute(pool).await.ok();
     
@@ -181,7 +168,6 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
             UNIQUE(user_id, friend_id)
         )
     "#).execute(pool).await?;
-    
     query("CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id, status)").execute(pool).await.ok();
     query("CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id, status)").execute(pool).await.ok();
     
@@ -208,7 +194,6 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     "#).execute(pool).await?;
-    
     query("CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at)").execute(pool).await.ok();
     
     // 邀请链接表
@@ -259,7 +244,6 @@ pub async fn run_migrations(pool: &SqlitePool) -> anyhow::Result<()> {
             UNIQUE(user_id, action_type)
         )
     "#).execute(pool).await?;
-    
     query("CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start)").execute(pool).await.ok();
     
     Ok(())
@@ -275,7 +259,6 @@ pub async fn init_admin(pool: &SqlitePool, config: &Config) -> anyhow::Result<()
     query("INSERT INTO users (id, uid, nickname, password_hash, role, account_status, token_version, online) VALUES (?, ?, ?, ?, 'admin', 'active', 0, 0)")
         .bind(&id).bind(&config.admin_uid).bind("管理员").bind(&hash).execute(pool).await?;
     
-    // 给管理员授予所有权限
     let perms: Vec<(String, String)> = query_as("SELECT id, name FROM permissions").fetch_all(pool).await?;
     for (perm_id, _) in perms {
         let up_id = uuid::Uuid::new_v4().to_string();
@@ -289,38 +272,170 @@ pub async fn init_admin(pool: &SqlitePool, config: &Config) -> anyhow::Result<()
 }
 
 /// 清理过期数据（定期调用）
-pub async fn cleanup_expired_data(pool: &SqlitePool) -> anyhow::Result<()> {
+pub async fn cleanup_expired_data(pool: &SqlitePool) -> anyhow::Result<CleanupStats> {
     let now = chrono::Utc::now();
+    let mut stats = CleanupStats::default();
     
-    // 清理7天前的已读私聊消息
-    let expire_date = (now - chrono::Duration::days(7)).to_rfc3339();
-    sqlx::query("DELETE FROM direct_messages WHERE created_at < ? AND read = 1")
-        .bind(&expire_date)
-        .execute(pool)
+    // 1. 清理过期的普通消息（保留置顶消息）
+    let msg_expire = (now - chrono::Duration::days(MESSAGE_RETENTION_DAYS)).to_rfc3339();
+    let result = sqlx::query(
+        "DELETE FROM messages WHERE created_at < ? AND pinned = 0"
+    )
+    .bind(&msg_expire)
+    .execute(pool)
+    .await?;
+    stats.messages_deleted = result.rows_affected();
+    
+    // 2. 清理过期的置顶消息
+    let pinned_expire = (now - chrono::Duration::days(PINNED_MESSAGE_RETENTION_DAYS)).to_rfc3339();
+    let result = sqlx::query(
+        "DELETE FROM messages WHERE created_at < ? AND pinned = 1"
+    )
+    .bind(&pinned_expire)
+    .execute(pool)
+    .await?;
+    stats.pinned_deleted = result.rows_affected();
+    
+    // 3. 清理每个频道超出限制的消息（保留最新的）
+    let groups: Vec<String> = sqlx::query_scalar("SELECT id FROM groups")
+        .fetch_all(pool)
         .await?;
     
-    // 清理30天前的操作日志
-    let log_expire = (now - chrono::Duration::days(30)).to_rfc3339();
-    sqlx::query("DELETE FROM audit_logs WHERE created_at < ?")
+    for group_id in groups {
+        // 获取该频道的消息数量
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages WHERE group_id = ?")
+            .bind(&group_id)
+            .fetch_one(pool)
+            .await?;
+        
+        if count > MAX_MESSAGES_PER_GROUP {
+            // 删除最旧的非置顶消息
+            let to_delete = count - MAX_MESSAGES_PER_GROUP;
+            sqlx::query(r#"
+                DELETE FROM messages 
+                WHERE id IN (
+                    SELECT id FROM messages 
+                    WHERE group_id = ? AND pinned = 0 
+                    ORDER BY created_at ASC 
+                    LIMIT ?
+                )
+            "#)
+            .bind(&group_id)
+            .bind(to_delete as i64)
+            .execute(pool)
+            .await?;
+            
+            stats.overflow_deleted += to_delete as u64;
+        }
+    }
+    
+    // 4. 清理私聊消息（已读的7天后删除）
+    let dm_expire = (now - chrono::Duration::days(7)).to_rfc3339();
+    let result = sqlx::query("DELETE FROM direct_messages WHERE created_at < ? AND read = 1")
+        .bind(&dm_expire)
+        .execute(pool)
+        .await?;
+    stats.direct_deleted = result.rows_affected();
+    
+    // 5. 清理未读私聊消息（30天后强制删除）
+    let dm_force_expire = (now - chrono::Duration::days(30)).to_rfc3339();
+    let result = sqlx::query("DELETE FROM direct_messages WHERE created_at < ?")
+        .bind(&dm_force_expire)
+        .execute(pool)
+        .await?;
+    stats.direct_deleted += result.rows_affected();
+    
+    // 6. 清理操作日志（7天后删除）
+    let log_expire = (now - chrono::Duration::days(7)).to_rfc3339();
+    let result = sqlx::query("DELETE FROM audit_logs WHERE created_at < ?")
         .bind(&log_expire)
         .execute(pool)
         .await?;
+    stats.logs_deleted = result.rows_affected();
     
-    // 清理过期的速率限制记录
+    // 7. 清理过期的速率限制记录
     let rate_expire = (now - chrono::Duration::hours(1)).to_rfc3339();
     sqlx::query("DELETE FROM rate_limits WHERE window_start < ?")
         .bind(&rate_expire)
         .execute(pool)
         .await?;
     
-    // 清理过期的邀请链接
+    // 8. 清理过期的邀请链接
     sqlx::query("DELETE FROM invite_links WHERE expires_at IS NOT NULL AND expires_at < ?")
         .bind(&now.to_rfc3339())
         .execute(pool)
         .await?;
     
-    // 执行VACUUM优化数据库（每周一次即可）
+    // 9. 清理孤立的消息引用
+    sqlx::query("DELETE FROM mentions WHERE message_id NOT IN (SELECT id FROM messages)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("DELETE FROM message_reads WHERE message_id NOT IN (SELECT id FROM messages)")
+        .execute(pool)
+        .await?;
+    
+    // 10. 执行VACUUM优化数据库（每周一次，这里简化处理）
+    // 注意：VACUUM会锁定数据库，谨慎使用
     // sqlx::query("VACUUM").execute(pool).await?;
     
-    Ok(())
+    tracing::info!(
+        "清理完成: 消息{}条, 置顶{}条, 溢出{}条, 私聊{}条, 日志{}条",
+        stats.messages_deleted,
+        stats.pinned_deleted,
+        stats.overflow_deleted,
+        stats.direct_deleted,
+        stats.logs_deleted
+    );
+    
+    Ok(stats)
+}
+
+/// 获取数据库大小估算
+pub async fn get_db_stats(pool: &SqlitePool) -> anyhow::Result<DbStats> {
+    let users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+        .fetch_one(pool).await?;
+    
+    let groups: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM groups")
+        .fetch_one(pool).await?;
+    
+    let messages: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages")
+        .fetch_one(pool).await?;
+    
+    let direct_messages: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM direct_messages")
+        .fetch_one(pool).await?;
+    
+    let files: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages WHERE type IN ('image', 'file')")
+        .fetch_one(pool).await?;
+    
+    let total_file_size: i64 = sqlx::query_scalar("SELECT COALESCE(SUM(file_size), 0) FROM messages WHERE type IN ('image', 'file')")
+        .fetch_one(pool).await?;
+    
+    Ok(DbStats {
+        users,
+        groups,
+        messages,
+        direct_messages,
+        files,
+        total_file_size,
+    })
+}
+
+#[derive(Debug, Default)]
+pub struct CleanupStats {
+    pub messages_deleted: u64,
+    pub pinned_deleted: u64,
+    pub overflow_deleted: u64,
+    pub direct_deleted: u64,
+    pub logs_deleted: u64,
+}
+
+#[derive(Debug)]
+pub struct DbStats {
+    pub users: i64,
+    pub groups: i64,
+    pub messages: i64,
+    pub direct_messages: i64,
+    pub files: i64,
+    pub total_file_size: i64,
 }
