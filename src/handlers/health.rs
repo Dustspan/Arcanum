@@ -4,6 +4,8 @@ use sqlx::SqlitePool;
 use std::time::Instant;
 use crate::AppState;
 use crate::db;
+use crate::handlers::auth::get_claims_full;
+use crate::utils::check_permission;
 
 pub struct SystemStats {
     pub start_time: Instant,
@@ -118,111 +120,127 @@ async fn check_database(pool: &SqlitePool) -> &'static str {
     }
 }
 
-/// 获取系统统计数据
+/// 获取系统统计数据（权限模块化）
 pub async fn get_statistics(
     State(state): State<AppState>,
     headers: HeaderMap
 ) -> crate::error::Result<Json<serde_json::Value>> {
-    let claims = crate::handlers::auth::get_claims_full(&headers, &state).await?;
+    let claims = get_claims_full(&headers, &state).await?;
     
-    if claims.role != "admin" {
-        crate::utils::check_permission(&claims, "admin")?;
+    // 检查是否有任何管理权限
+    let has_any_admin_perm = claims.role == "admin" || 
+        check_permission(&claims, "user_view").is_ok() ||
+        check_permission(&claims, "group_view").is_ok() ||
+        check_permission(&claims, "message_delete").is_ok();
+    
+    if !has_any_admin_perm {
+        return Err(crate::error::AppError::Forbidden);
     }
     
+    // 根据权限返回不同的统计数据
+    let can_view_users = claims.role == "admin" || check_permission(&claims, "user_view").is_ok();
+    let can_view_groups = claims.role == "admin" || check_permission(&claims, "group_view").is_ok();
+    let can_view_messages = claims.role == "admin" || check_permission(&claims, "message_delete").is_ok();
+    let can_view_storage = claims.role == "admin" || check_permission(&claims, "file_upload").is_ok();
+    
+    let mut result = json!({
+        "success": true,
+        "data": {}
+    });
+    
+    let data = result.get_mut("data").unwrap().as_object_mut().unwrap();
+    
     // 用户统计
-    let total_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
-        .fetch_one(&state.db).await?;
-    let online_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE online = 1")
-        .fetch_one(&state.db).await?;
-    let banned_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE account_status = 'banned'")
-        .fetch_one(&state.db).await?;
+    if can_view_users {
+        let total_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+            .fetch_one(&state.db).await?;
+        let online_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE online = 1")
+            .fetch_one(&state.db).await?;
+        let banned_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE account_status = 'banned'")
+            .fetch_one(&state.db).await?;
+        
+        data.insert("users".to_string(), json!({
+            "total": total_users,
+            "online": online_users,
+            "banned": banned_users
+        }));
+    }
     
     // 频道统计
-    let total_groups: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM groups")
-        .fetch_one(&state.db).await?;
-    let active_groups: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT group_id) FROM group_members")
-        .fetch_one(&state.db).await?;
+    if can_view_groups {
+        let total_groups: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM groups")
+            .fetch_one(&state.db).await?;
+        let active_groups: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT group_id) FROM group_members")
+            .fetch_one(&state.db).await?;
+        
+        data.insert("groups".to_string(), json!({
+            "total": total_groups,
+            "active": active_groups
+        }));
+    }
     
     // 消息统计
-    let total_messages: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages")
+    if can_view_messages {
+        let total_messages: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages")
+            .fetch_one(&state.db).await?;
+        let today_messages: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM messages WHERE date(created_at) = date('now')"
+        )
         .fetch_one(&state.db).await?;
-    let today_messages: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM messages WHERE date(created_at) = date('now')"
-    )
-    .fetch_one(&state.db).await?;
+        
+        data.insert("messages".to_string(), json!({
+            "total": total_messages,
+            "today": today_messages
+        }));
+    }
     
     // 文件统计
-    let total_files: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages WHERE type IN ('image', 'file')")
-        .fetch_one(&state.db).await?;
-    let total_file_size: i64 = sqlx::query_scalar("SELECT COALESCE(SUM(file_size), 0) FROM messages WHERE type IN ('image', 'file')")
-        .fetch_one(&state.db).await?;
+    if can_view_storage {
+        let total_files: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM messages WHERE type IN ('image', 'file')")
+            .fetch_one(&state.db).await?;
+        let total_file_size: i64 = sqlx::query_scalar("SELECT COALESCE(SUM(file_size), 0) FROM messages WHERE type IN ('image', 'file')")
+            .fetch_one(&state.db).await?;
+        
+        data.insert("files".to_string(), json!({
+            "total": total_files,
+            "totalSize": total_file_size
+        }));
+    }
     
-    // 私聊统计
-    let total_direct_messages: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM direct_messages")
-        .fetch_one(&state.db).await?;
+    // 私聊统计（仅管理员）
+    if claims.role == "admin" {
+        let total_direct_messages: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM direct_messages")
+            .fetch_one(&state.db).await?;
+        let total_friendships: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM friendships WHERE status = 'accepted'")
+            .fetch_one(&state.db).await?;
+        
+        data.insert("direct".to_string(), json!({
+            "messages": total_direct_messages,
+            "friendships": total_friendships
+        }));
+    }
     
-    // 好友统计
-    let total_friendships: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM friendships WHERE status = 'accepted'")
-        .fetch_one(&state.db).await?;
-    
-    // 存储使用情况
-    let storage_usage = state.storage.get_storage_usage().ok();
-    
+    // 系统信息（所有人可见）
     let uptime = state.stats.uptime_secs();
+    data.insert("system".to_string(), json!({
+        "uptime": uptime,
+        "activeBroadcastGroups": state.broadcast.active_groups(),
+        "activeBroadcastUsers": state.broadcast.active_users(),
+        "cacheSize": state.cache.cache_size().await
+    }));
     
-    Ok(Json(json!({
-        "success": true,
-        "data": {
-            "users": {
-                "total": total_users,
-                "online": online_users,
-                "banned": banned_users
-            },
-            "groups": {
-                "total": total_groups,
-                "active": active_groups
-            },
-            "messages": {
-                "total": total_messages,
-                "today": today_messages
-            },
-            "files": {
-                "total": total_files,
-                "totalSize": total_file_size
-            },
-            "direct": {
-                "messages": total_direct_messages,
-                "friendships": total_friendships
-            },
-            "storage": storage_usage.map(|s| json!({
-                "totalSize": s.total_size,
-                "imagesSize": s.images_size,
-                "filesSize": s.files_size,
-                "avatarsSize": s.avatars_size,
-                "maxSize": s.max_size,
-                "available": s.available,
-                "usagePercent": s.usage_percent(),
-                "filesCount": s.files_count
-            })),
-            "system": {
-                "uptime": uptime,
-                "activeBroadcastGroups": state.broadcast.active_groups(),
-                "activeBroadcastUsers": state.broadcast.active_users(),
-                "cacheSize": state.cache.cache_size().await
-            }
-        }
-    })))
+    Ok(Json(result))
 }
 
-/// 获取存储详情（管理员）
+/// 获取存储详情（需要 file_upload 权限或管理员）
 pub async fn get_storage_info(
     State(state): State<AppState>,
     headers: HeaderMap
 ) -> crate::error::Result<Json<serde_json::Value>> {
-    let claims = crate::handlers::auth::get_claims_full(&headers, &state).await?;
+    let claims = get_claims_full(&headers, &state).await?;
     
     if claims.role != "admin" {
-        crate::utils::check_permission(&claims, "admin")?;
+        check_permission(&claims, "file_upload")?;
     }
     
     let usage = state.storage.get_storage_usage()?;
@@ -262,15 +280,16 @@ pub async fn get_storage_info(
     })))
 }
 
-/// 手动触发清理（管理员）
+/// 手动触发清理（仅管理员）
 pub async fn trigger_cleanup(
     State(state): State<AppState>,
     headers: HeaderMap
 ) -> crate::error::Result<Json<serde_json::Value>> {
-    let claims = crate::handlers::auth::get_claims_full(&headers, &state).await?;
+    let claims = get_claims_full(&headers, &state).await?;
     
+    // 仅管理员可以手动清理
     if claims.role != "admin" {
-        crate::utils::check_permission(&claims, "admin")?;
+        return Err(crate::error::AppError::Forbidden);
     }
     
     let stats = db::cleanup_expired_data(&state.db).await?;

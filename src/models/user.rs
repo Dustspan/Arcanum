@@ -38,3 +38,21 @@ pub struct Claims {
     pub token_version: i64, // Token版本（用于踢出）
     pub exp: i64            // 过期时间
 }
+
+/// 用户信息（用于API返回）
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct User {
+    pub id: String,
+    pub uid: String,
+    pub nickname: String,
+    #[serde(skip_serializing)]
+    pub password_hash: String,
+    pub avatar: Option<String>,
+    pub role: String,
+    pub account_status: String,
+    pub muted_until: Option<String>,
+    pub token_version: i64,
+    pub online: i64,
+    pub last_ip: Option<String>,
+    pub created_at: String,
+}
