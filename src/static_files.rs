@@ -468,8 +468,13 @@ Vue.createApp({
             this.addMessageIfNotExists(m.data);
           }
           if (m.event === 'direct_message' && m.data) {
-            if (this.dmTarget && (m.data.senderId === this.dmTarget.id || m.data.receiverId === this.dmTarget.id)) {
-              this.dmMessages.push(m.data);
+            // 如果当前正在与该用户聊天，添加消息
+            if (this.dmTarget && (m.data.senderId === this.dmTarget.id || m.data.senderId === this.user.id)) {
+              // 检查消息是否已存在
+              if (!this.dmMessages.find(msg => msg.id === m.data.id)) {
+                this.dmMessages.push(m.data);
+                this.$nextTick(() => this.scrollDMToBottom());
+              }
             }
           }
           if (m.event === 'message_recall' && m.data && m.data.groupId === this.currentGroup?.id) {
@@ -511,12 +516,30 @@ Vue.createApp({
       this.userMenu.uid = userId;
     },
     closeUserMenu() { this.userMenu.show = false; },
-    startDMFromMenu() {
+    async startDMFromMenu() {
       this.dmTarget = { id: this.userMenu.userId, nickname: this.userMenu.nickname, online: this.userMenu.online };
       this.dmMessages = [];
       this.userMenu.show = false;
+      await this.loadDMMessages();
     },
     closeDM() { this.dmTarget = null; this.dmMessages = []; },
+    async loadDMMessages() {
+      if (!this.dmTarget) return;
+      const d = await this.api('/api/direct/' + this.dmTarget.id);
+      if (d.success && d.data) {
+        this.dmMessages = d.data.messages || [];
+        if (d.data.otherUser) {
+          this.dmTarget.nickname = d.data.otherUser.nickname;
+          this.dmTarget.avatar = d.data.otherUser.avatar;
+          this.dmTarget.online = d.data.otherUser.online;
+        }
+        this.$nextTick(() => this.scrollDMToBottom());
+      }
+    },
+    scrollDMToBottom() {
+      const box = this.$refs.dmMsgsBox;
+      if (box) box.scrollTop = box.scrollHeight;
+    },
     async sendDM() {
       if (!this.dmInput.trim() || !this.dmTarget) return;
       const content = this.dmInput;
@@ -537,7 +560,11 @@ Vue.createApp({
       this.api('/api/friends/' + this.userMenu.userId, { method: 'POST' }).then(d => { alert(d.success ? '好友请求已发送' : (d.error || '失败')); });
       this.userMenu.show = false;
     },
-    startDM(friend) { this.dmTarget = { id: friend.id, nickname: friend.nickname, online: friend.online }; this.dmMessages = []; },
+    async startDM(friend) {
+      this.dmTarget = { id: friend.id, nickname: friend.nickname, online: friend.online, avatar: friend.avatar };
+      this.dmMessages = [];
+      await this.loadDMMessages();
+    },
     openAdmin() { this.showAdmin = true; this.loadAllPermissions(); if (this.adminTab === 'users') this.loadUsers(); },
     async loadAllPermissions() { const d = await this.api('/api/admin/permissions'); if (d.success) this.allPermissions = d.data || []; },
     async loadUsers() { const d = await this.api('/api/admin/users'); if (d.success) this.users = d.data || []; },
